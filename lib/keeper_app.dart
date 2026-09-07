@@ -507,48 +507,61 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         appBar: widget.desktop
             ? const DesktopTitleBar()
             : AppBar(title: const Text('FidoKeeper')),
-        body: Column(
+        body: Row(
           children: [
-            if (_busy || _closing) const LinearProgressIndicator(minHeight: 2),
-            if (_error != null)
-              MaterialBanner(
-                content: Text(_error!),
-                actions: [
-                  TextButton(
-                    onPressed: () => setState(() => _error = null),
-                    child: Text(tr('关闭', 'Dismiss')),
+            NavigationRail(
+              selectedIndex: _page,
+              onDestinationSelected: (index) => setState(() => _page = index),
+              labelType: NavigationRailLabelType.all,
+              destinations: [
+                NavigationRailDestination(
+                  icon: const Icon(Icons.key_outlined),
+                  selectedIcon: const Icon(Icons.key),
+                  label: Text(tr('认证器', 'Devices')),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.password_outlined),
+                  selectedIcon: const Icon(Icons.password),
+                  label: Text(tr('凭证', 'Credentials')),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.fingerprint_outlined),
+                  selectedIcon: const Icon(Icons.fingerprint),
+                  label: Text(tr('指纹', 'Fingerprints')),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: Text(tr('设置', 'Settings')),
+                ),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: Column(
+                children: [
+                  if (_busy || _closing)
+                    const LinearProgressIndicator(minHeight: 2),
+                  if (_error != null)
+                    MaterialBanner(
+                      content: Text(_error!),
+                      actions: [
+                        TextButton(
+                          onPressed: () => setState(() => _error = null),
+                          child: Text(tr('关闭', 'Dismiss')),
+                        ),
+                      ],
+                    ),
+                  Expanded(
+                    child: switch (_page) {
+                      0 => _devices(context),
+                      1 => _credentials(context),
+                      2 => _fingerprints(context),
+                      _ => _settings(context),
+                    },
                   ),
                 ],
               ),
-            Expanded(
-              child: switch (_page) {
-                0 => _devices(context),
-                1 => _credentials(context),
-                2 => _fingerprints(context),
-                _ => _settings(context),
-              },
-            ),
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _page,
-          onDestinationSelected: (index) => setState(() => _page = index),
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.key),
-              label: tr('认证器', 'Devices'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.password),
-              label: tr('凭证', 'Credentials'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.fingerprint),
-              label: tr('指纹', 'Fingerprints'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.settings_outlined),
-              label: tr('设置', 'Settings'),
             ),
           ],
         ),
