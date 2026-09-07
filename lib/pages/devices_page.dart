@@ -42,8 +42,8 @@ class DevicesPage extends StatelessWidget {
             children: [
               Text(
                 tr(
-                  '插入安全密钥后重新扫描。所有操作均在本机完成。',
-                  'Insert a security key and scan. All operations stay on this computer.',
+                  '插入 USB 密钥或贴上 NFC 密钥后重新扫描。首次 USB 连接需要授权，NFC 操作期间请保持贴紧。所有操作均在本机完成。',
+                  'Scan after inserting a USB key or holding an NFC key. USB needs a one-time permission; keep NFC in range during operations. All operations stay on this device.',
                 ),
               ),
               actionButton(

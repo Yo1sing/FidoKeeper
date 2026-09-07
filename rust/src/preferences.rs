@@ -2,18 +2,25 @@ use crate::api::models::Preferences;
 use std::{collections::HashSet, fs, path::PathBuf};
 
 fn location() -> Result<PathBuf, String> {
-    let base = if cfg!(target_os = "windows") {
-        std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
-    } else if cfg!(target_os = "macos") {
-        std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Application Support"))
-    } else {
-        std::env::var_os("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".config")))
-    };
-    Ok(base
-        .ok_or("找不到用户配置目录")?
-        .join("FidoKeeper/settings.json"))
+    #[cfg(target_os = "android")]
+    {
+        return Ok(crate::authenticator::android_files_dir()?.join("FidoKeeper/settings.json"));
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let base = if cfg!(target_os = "windows") {
+            std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+        } else if cfg!(target_os = "macos") {
+            std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Application Support"))
+        } else {
+            std::env::var_os("XDG_CONFIG_HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".config")))
+        };
+        Ok(base
+            .ok_or("找不到用户配置目录")?
+            .join("FidoKeeper/settings.json"))
+    }
 }
 
 fn decode(data: &[u8]) -> Result<Preferences, String> {

@@ -1,7 +1,7 @@
 use crate::api::models::{
     BioTemplateSummary, CredentialSummary, DeviceSummary, HiddenAuthenticator, Preferences,
 };
-use crate::authenticator::{Authenticator, Inventory, NativeAuthenticator};
+use crate::authenticator::{Authenticator, Inventory, platform_authenticator};
 use crate::preferences;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -63,7 +63,7 @@ struct State {
 impl State {
     fn new() -> Self {
         Self {
-            hardware: Box::new(NativeAuthenticator),
+            hardware: platform_authenticator(),
             devices: vec![],
             active: None,
             inventory: None,
@@ -329,7 +329,7 @@ mod tests {
     }
     fn state() -> State {
         State {
-            hardware: Box::new(NativeAuthenticator),
+            hardware: platform_authenticator(),
             devices: vec![device("one"), device("two")],
             active: Some(device("one")),
             inventory: Some(Inventory {

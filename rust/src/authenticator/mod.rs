@@ -1,4 +1,7 @@
 mod native;
+mod ctap;
+#[cfg(target_os = "android")]
+mod android;
 use crate::api::models::{BioTemplateSummary, CredentialSummary, DeviceSummary};
 use native::*;
 use std::{
@@ -26,6 +29,22 @@ pub trait Authenticator {
 }
 
 pub struct NativeAuthenticator;
+
+pub fn platform_authenticator() -> Box<dyn Authenticator + Send> {
+    #[cfg(target_os = "android")]
+    {
+        Box::new(android::authenticator())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        Box::new(NativeAuthenticator)
+    }
+}
+
+#[cfg(target_os = "android")]
+pub fn android_files_dir() -> Result<std::path::PathBuf, String> {
+    android::files_dir()
+}
 
 struct Owned<T> {
     ptr: NonNull<T>,

@@ -28,6 +28,10 @@ Rust 使用 EXE 所在目录的 `fido2.dll`，仅允许 DLL 所在目录和 Wind
 
 分别动态加载系统 `libfido2.so.1` / `libfido2.1.dylib`。构建需要 libfido2 >= 1.13 的开发包和 pkg-config；Linux 还需 Flutter GTK 构建依赖。macOS 支持标准 Homebrew 路径。
 
+### Android
+
+不使用 libfido2。Kotlin 通过 USB Host / NFC 打开设备，Rust 发送 CTAP2 管理命令（凭证、PIN、指纹、重置）。首次插入 USB 密钥时需要系统授权；NFC 操作期间需保持贴紧。需要带 USB Host 或 NFC 的真机，模拟器无法访问安全密钥。
+
 ## 构建与验证
 
 ```sh
