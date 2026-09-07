@@ -1,6 +1,9 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#ifdef GDK_WINDOWING_X11
+#include <gdk/gdkx.h>
+#endif
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -22,8 +25,27 @@ static void my_application_activate(GApplication* application) {
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
-  // 首帧前移除原生装饰，避免自绘标题栏出现时闪烁。
+  gboolean use_header_bar = TRUE;
+#ifdef GDK_WINDOWING_X11
+  GdkScreen* screen = gtk_window_get_screen(window);
+  if (GDK_IS_X11_SCREEN(screen)) {
+    const gchar* wm_name = gdk_x11_screen_get_window_manager_name(screen);
+    if (g_strcmp0(wm_name, "GNOME Shell") != 0) {
+      use_header_bar = FALSE;
+    }
+  }
+#endif
+  if (use_header_bar) {
+    GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
+    gtk_header_bar_set_title(header_bar, "FidoKeeper");
+    gtk_header_bar_set_show_close_button(header_bar, TRUE);
+    gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
+    // 保留原生标题栏，首帧前隐藏，避免与自绘标题栏同时显示。
+    gtk_widget_hide(GTK_WIDGET(header_bar));
+  }
+
   gtk_window_set_title(window, "FidoKeeper");
+  // 同时隐藏窗口管理器提供的装饰，不销毁原生标题栏。
   gtk_window_set_decorated(window, FALSE);
 
   gtk_window_set_default_size(window, 1280, 720);

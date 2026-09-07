@@ -50,6 +50,25 @@ set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
 # Application build; see runner/CMakeLists.txt.
+include(cmake/fido_runtime.cmake)
+if(FLUTTER_TARGET_PLATFORM)
+  set(FIDO_RUNTIME_TARGET "${FLUTTER_TARGET_PLATFORM}")
+elseif(CMAKE_GENERATOR_PLATFORM MATCHES "^[Aa][Rr][Mm]64$")
+  set(FIDO_RUNTIME_TARGET "windows-arm64")
+elseif(CMAKE_GENERATOR_PLATFORM MATCHES "^[Aa][Rr][Mm]$")
+  set(FIDO_RUNTIME_TARGET "windows-arm")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(FIDO_RUNTIME_TARGET "windows-x64")
+else()
+  set(FIDO_RUNTIME_TARGET "windows-x86")
+endif()
+fidokeeper_runtime_files(FIDO_RUNTIME_FILES "${FIDO_RUNTIME_TARGET}")
+# DLL 依赖 MSVC 运行库，由当前 Visual Studio 工具链提供匹配架构的可再分发文件。
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
+include(InstallRequiredSystemLibraries)
+list(APPEND FIDO_RUNTIME_FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
+
 add_subdirectory("runner")
 
 
@@ -71,6 +90,9 @@ endif()
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
+
+install(FILES ${FIDO_RUNTIME_FILES}
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)

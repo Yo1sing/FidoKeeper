@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1918914929;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 424683704;
 
 // Section: executor
 
@@ -47,16 +47,17 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__simple__greet_impl(
+fn wire__crate__api__keeper__dispatch_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "greet",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            debug_name: "dispatch",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -68,12 +69,14 @@ fn wire__crate__api__simple__greet_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_name = <String>::sse_decode(&mut deserializer);
+            let api_command = <crate::api::keeper::Command>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Ok::<_, ()>(crate::api::simple::greet(api_name))?;
-                std::result::Result::Ok(output_ok)
-            })())
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::keeper::dispatch(api_command)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -111,6 +114,38 @@ fn wire__crate__api__simple__init_app_impl(
         },
     )
 }
+fn wire__crate__api__models__preferences_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "preferences_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::models::Preferences::default())?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 
 // Section: dart2rust
 
@@ -119,6 +154,185 @@ impl SseDecode for String {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <Vec<u8>>::sse_decode(deserializer);
         return String::from_utf8(inner).unwrap();
+    }
+}
+
+impl SseDecode for crate::api::models::BioTemplateSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        return crate::api::models::BioTemplateSummary {
+            id: var_id,
+            name: var_name,
+        };
+    }
+}
+
+impl SseDecode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u8().unwrap() != 0
+    }
+}
+
+impl SseDecode for crate::api::keeper::Command {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_kind = <crate::api::keeper::CommandKind>::sse_decode(deserializer);
+        let mut var_value = <String>::sse_decode(deserializer);
+        let mut var_pin = <String>::sse_decode(deserializer);
+        let mut var_newPin = <String>::sse_decode(deserializer);
+        let mut var_confirmPin = <String>::sse_decode(deserializer);
+        let mut var_confirmed = <bool>::sse_decode(deserializer);
+        return crate::api::keeper::Command {
+            kind: var_kind,
+            value: var_value,
+            pin: var_pin,
+            new_pin: var_newPin,
+            confirm_pin: var_confirmPin,
+            confirmed: var_confirmed,
+        };
+    }
+}
+
+impl SseDecode for crate::api::keeper::CommandKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::keeper::CommandKind::Load,
+            1 => crate::api::keeper::CommandKind::Scan,
+            2 => crate::api::keeper::CommandKind::Connect,
+            3 => crate::api::keeper::CommandKind::Disconnect,
+            4 => crate::api::keeper::CommandKind::Hide,
+            5 => crate::api::keeper::CommandKind::Unhide,
+            6 => crate::api::keeper::CommandKind::ListCredentials,
+            7 => crate::api::keeper::CommandKind::DeleteCredential,
+            8 => crate::api::keeper::CommandKind::ChangePin,
+            9 => crate::api::keeper::CommandKind::ListBio,
+            10 => crate::api::keeper::CommandKind::EnrollBio,
+            11 => crate::api::keeper::CommandKind::DeleteBio,
+            12 => crate::api::keeper::CommandKind::Reset,
+            13 => crate::api::keeper::CommandKind::Filter,
+            14 => crate::api::keeper::CommandKind::Theme,
+            15 => crate::api::keeper::CommandKind::Locale,
+            16 => crate::api::keeper::CommandKind::Shutdown,
+            _ => unreachable!("Invalid variant for CommandKind: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::CredentialSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_rpId = <String>::sse_decode(deserializer);
+        let mut var_rpName = <String>::sse_decode(deserializer);
+        let mut var_userName = <String>::sse_decode(deserializer);
+        let mut var_userDisplayName = <String>::sse_decode(deserializer);
+        return crate::api::models::CredentialSummary {
+            id: var_id,
+            rp_id: var_rpId,
+            rp_name: var_rpName,
+            user_name: var_userName,
+            user_display_name: var_userDisplayName,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::DeviceSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_label = <String>::sse_decode(deserializer);
+        let mut var_protocol = <String>::sse_decode(deserializer);
+        let mut var_credentialManagement = <bool>::sse_decode(deserializer);
+        let mut var_pin = <bool>::sse_decode(deserializer);
+        let mut var_fingerprint = <bool>::sse_decode(deserializer);
+        return crate::api::models::DeviceSummary {
+            path: var_path,
+            label: var_label,
+            protocol: var_protocol,
+            credential_management: var_credentialManagement,
+            pin: var_pin,
+            fingerprint: var_fingerprint,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::HiddenAuthenticator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_label = <String>::sse_decode(deserializer);
+        return crate::api::models::HiddenAuthenticator {
+            path: var_path,
+            label: var_label,
+        };
+    }
+}
+
+impl SseDecode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::BioTemplateSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::BioTemplateSummary>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::CredentialSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::CredentialSummary>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::DeviceSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::DeviceSummary>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::HiddenAuthenticator> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::HiddenAuthenticator>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
     }
 }
 
@@ -134,6 +348,67 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Option<crate::api::models::DeviceSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::models::DeviceSummary>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for crate::api::models::Preferences {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_locale = <String>::sse_decode(deserializer);
+        let mut var_theme = <String>::sse_decode(deserializer);
+        let mut var_hiddenAuthenticators =
+            <Vec<crate::api::models::HiddenAuthenticator>>::sse_decode(deserializer);
+        return crate::api::models::Preferences {
+            locale: var_locale,
+            theme: var_theme,
+            hidden_authenticators: var_hiddenAuthenticators,
+        };
+    }
+}
+
+impl SseDecode for crate::api::keeper::Snapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_devices = <Vec<crate::api::models::DeviceSummary>>::sse_decode(deserializer);
+        let mut var_active = <Option<crate::api::models::DeviceSummary>>::sse_decode(deserializer);
+        let mut var_credentials =
+            <Vec<crate::api::models::CredentialSummary>>::sse_decode(deserializer);
+        let mut var_existing = <u64>::sse_decode(deserializer);
+        let mut var_remaining = <u64>::sse_decode(deserializer);
+        let mut var_templates =
+            <Vec<crate::api::models::BioTemplateSummary>>::sse_decode(deserializer);
+        let mut var_preferences = <crate::api::models::Preferences>::sse_decode(deserializer);
+        let mut var_query = <String>::sse_decode(deserializer);
+        return crate::api::keeper::Snapshot {
+            devices: var_devices,
+            active: var_active,
+            credentials: var_credentials,
+            existing: var_existing,
+            remaining: var_remaining,
+            templates: var_templates,
+            preferences: var_preferences,
+            query: var_query,
+        };
+    }
+}
+
+impl SseDecode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -146,20 +421,6 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
-impl SseDecode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
-    }
-}
-
-impl SseDecode for bool {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_u8().unwrap() != 0
-    }
-}
-
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -169,7 +430,9 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        1 => wire__crate__api__keeper__dispatch_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__models__preferences_default_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -182,17 +445,348 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
 
 // Section: rust2dart
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::BioTemplateSummary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::BioTemplateSummary
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::BioTemplateSummary>
+    for crate::api::models::BioTemplateSummary
+{
+    fn into_into_dart(self) -> crate::api::models::BioTemplateSummary {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::keeper::Command {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.kind.into_into_dart().into_dart(),
+            self.value.into_into_dart().into_dart(),
+            self.pin.into_into_dart().into_dart(),
+            self.new_pin.into_into_dart().into_dart(),
+            self.confirm_pin.into_into_dart().into_dart(),
+            self.confirmed.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::keeper::Command {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::Command>
+    for crate::api::keeper::Command
+{
+    fn into_into_dart(self) -> crate::api::keeper::Command {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::keeper::CommandKind {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Load => 0.into_dart(),
+            Self::Scan => 1.into_dart(),
+            Self::Connect => 2.into_dart(),
+            Self::Disconnect => 3.into_dart(),
+            Self::Hide => 4.into_dart(),
+            Self::Unhide => 5.into_dart(),
+            Self::ListCredentials => 6.into_dart(),
+            Self::DeleteCredential => 7.into_dart(),
+            Self::ChangePin => 8.into_dart(),
+            Self::ListBio => 9.into_dart(),
+            Self::EnrollBio => 10.into_dart(),
+            Self::DeleteBio => 11.into_dart(),
+            Self::Reset => 12.into_dart(),
+            Self::Filter => 13.into_dart(),
+            Self::Theme => 14.into_dart(),
+            Self::Locale => 15.into_dart(),
+            Self::Shutdown => 16.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::keeper::CommandKind
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::CommandKind>
+    for crate::api::keeper::CommandKind
+{
+    fn into_into_dart(self) -> crate::api::keeper::CommandKind {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::CredentialSummary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.rp_id.into_into_dart().into_dart(),
+            self.rp_name.into_into_dart().into_dart(),
+            self.user_name.into_into_dart().into_dart(),
+            self.user_display_name.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::CredentialSummary
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::CredentialSummary>
+    for crate::api::models::CredentialSummary
+{
+    fn into_into_dart(self) -> crate::api::models::CredentialSummary {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::DeviceSummary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.path.into_into_dart().into_dart(),
+            self.label.into_into_dart().into_dart(),
+            self.protocol.into_into_dart().into_dart(),
+            self.credential_management.into_into_dart().into_dart(),
+            self.pin.into_into_dart().into_dart(),
+            self.fingerprint.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::DeviceSummary
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::DeviceSummary>
+    for crate::api::models::DeviceSummary
+{
+    fn into_into_dart(self) -> crate::api::models::DeviceSummary {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::HiddenAuthenticator {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.path.into_into_dart().into_dart(),
+            self.label.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::HiddenAuthenticator
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::HiddenAuthenticator>
+    for crate::api::models::HiddenAuthenticator
+{
+    fn into_into_dart(self) -> crate::api::models::HiddenAuthenticator {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::Preferences {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.locale.into_into_dart().into_dart(),
+            self.theme.into_into_dart().into_dart(),
+            self.hidden_authenticators.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::Preferences
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::Preferences>
+    for crate::api::models::Preferences
+{
+    fn into_into_dart(self) -> crate::api::models::Preferences {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::keeper::Snapshot {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.devices.into_into_dart().into_dart(),
+            self.active.into_into_dart().into_dart(),
+            self.credentials.into_into_dart().into_dart(),
+            self.existing.into_into_dart().into_dart(),
+            self.remaining.into_into_dart().into_dart(),
+            self.templates.into_into_dart().into_dart(),
+            self.preferences.into_into_dart().into_dart(),
+            self.query.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::keeper::Snapshot {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::Snapshot>
+    for crate::api::keeper::Snapshot
+{
+    fn into_into_dart(self) -> crate::api::keeper::Snapshot {
+        self
+    }
+}
+
 impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::BioTemplateSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+    }
+}
+
+impl SseEncode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for crate::api::keeper::Command {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::keeper::CommandKind>::sse_encode(self.kind, serializer);
+        <String>::sse_encode(self.value, serializer);
+        <String>::sse_encode(self.pin, serializer);
+        <String>::sse_encode(self.new_pin, serializer);
+        <String>::sse_encode(self.confirm_pin, serializer);
+        <bool>::sse_encode(self.confirmed, serializer);
+    }
+}
+
+impl SseEncode for crate::api::keeper::CommandKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::keeper::CommandKind::Load => 0,
+                crate::api::keeper::CommandKind::Scan => 1,
+                crate::api::keeper::CommandKind::Connect => 2,
+                crate::api::keeper::CommandKind::Disconnect => 3,
+                crate::api::keeper::CommandKind::Hide => 4,
+                crate::api::keeper::CommandKind::Unhide => 5,
+                crate::api::keeper::CommandKind::ListCredentials => 6,
+                crate::api::keeper::CommandKind::DeleteCredential => 7,
+                crate::api::keeper::CommandKind::ChangePin => 8,
+                crate::api::keeper::CommandKind::ListBio => 9,
+                crate::api::keeper::CommandKind::EnrollBio => 10,
+                crate::api::keeper::CommandKind::DeleteBio => 11,
+                crate::api::keeper::CommandKind::Reset => 12,
+                crate::api::keeper::CommandKind::Filter => 13,
+                crate::api::keeper::CommandKind::Theme => 14,
+                crate::api::keeper::CommandKind::Locale => 15,
+                crate::api::keeper::CommandKind::Shutdown => 16,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::models::CredentialSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.rp_id, serializer);
+        <String>::sse_encode(self.rp_name, serializer);
+        <String>::sse_encode(self.user_name, serializer);
+        <String>::sse_encode(self.user_display_name, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::DeviceSummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.path, serializer);
+        <String>::sse_encode(self.label, serializer);
+        <String>::sse_encode(self.protocol, serializer);
+        <bool>::sse_encode(self.credential_management, serializer);
+        <bool>::sse_encode(self.pin, serializer);
+        <bool>::sse_encode(self.fingerprint, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::HiddenAuthenticator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.path, serializer);
+        <String>::sse_encode(self.label, serializer);
+    }
+}
+
+impl SseEncode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::BioTemplateSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::BioTemplateSummary>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::CredentialSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::CredentialSummary>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::DeviceSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::DeviceSummary>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::HiddenAuthenticator> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::HiddenAuthenticator>::sse_encode(item, serializer);
+        }
     }
 }
 
@@ -206,6 +800,49 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Option<crate::api::models::DeviceSummary> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::models::DeviceSummary>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for crate::api::models::Preferences {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.locale, serializer);
+        <String>::sse_encode(self.theme, serializer);
+        <Vec<crate::api::models::HiddenAuthenticator>>::sse_encode(
+            self.hidden_authenticators,
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::keeper::Snapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::models::DeviceSummary>>::sse_encode(self.devices, serializer);
+        <Option<crate::api::models::DeviceSummary>>::sse_encode(self.active, serializer);
+        <Vec<crate::api::models::CredentialSummary>>::sse_encode(self.credentials, serializer);
+        <u64>::sse_encode(self.existing, serializer);
+        <u64>::sse_encode(self.remaining, serializer);
+        <Vec<crate::api::models::BioTemplateSummary>>::sse_encode(self.templates, serializer);
+        <crate::api::models::Preferences>::sse_encode(self.preferences, serializer);
+        <String>::sse_encode(self.query, serializer);
+    }
+}
+
+impl SseEncode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -216,20 +853,6 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
-}
-
-impl SseEncode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
-    }
-}
-
-impl SseEncode for bool {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_u8(self as _).unwrap();
-    }
 }
 
 #[cfg(not(target_family = "wasm"))]

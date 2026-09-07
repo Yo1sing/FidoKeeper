@@ -3,7 +3,8 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/simple.dart';
+import 'api/keeper.dart';
+import 'api/models.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -25,7 +26,61 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  BioTemplateSummary dco_decode_bio_template_summary(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  Command dco_decode_box_autoadd_command(dynamic raw);
+
+  @protected
+  DeviceSummary dco_decode_box_autoadd_device_summary(dynamic raw);
+
+  @protected
+  Command dco_decode_command(dynamic raw);
+
+  @protected
+  CommandKind dco_decode_command_kind(dynamic raw);
+
+  @protected
+  CredentialSummary dco_decode_credential_summary(dynamic raw);
+
+  @protected
+  DeviceSummary dco_decode_device_summary(dynamic raw);
+
+  @protected
+  HiddenAuthenticator dco_decode_hidden_authenticator(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
+  List<BioTemplateSummary> dco_decode_list_bio_template_summary(dynamic raw);
+
+  @protected
+  List<CredentialSummary> dco_decode_list_credential_summary(dynamic raw);
+
+  @protected
+  List<DeviceSummary> dco_decode_list_device_summary(dynamic raw);
+
+  @protected
+  List<HiddenAuthenticator> dco_decode_list_hidden_authenticator(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  DeviceSummary? dco_decode_opt_box_autoadd_device_summary(dynamic raw);
+
+  @protected
+  Preferences dco_decode_preferences(dynamic raw);
+
+  @protected
+  Snapshot dco_decode_snapshot(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -37,7 +92,77 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  BioTemplateSummary sse_decode_bio_template_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  Command sse_decode_box_autoadd_command(SseDeserializer deserializer);
+
+  @protected
+  DeviceSummary sse_decode_box_autoadd_device_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Command sse_decode_command(SseDeserializer deserializer);
+
+  @protected
+  CommandKind sse_decode_command_kind(SseDeserializer deserializer);
+
+  @protected
+  CredentialSummary sse_decode_credential_summary(SseDeserializer deserializer);
+
+  @protected
+  DeviceSummary sse_decode_device_summary(SseDeserializer deserializer);
+
+  @protected
+  HiddenAuthenticator sse_decode_hidden_authenticator(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  List<BioTemplateSummary> sse_decode_list_bio_template_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<CredentialSummary> sse_decode_list_credential_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<DeviceSummary> sse_decode_list_device_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<HiddenAuthenticator> sse_decode_list_hidden_authenticator(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  DeviceSummary? sse_decode_opt_box_autoadd_device_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Preferences sse_decode_preferences(SseDeserializer deserializer);
+
+  @protected
+  Snapshot sse_decode_snapshot(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -46,13 +171,73 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bio_template_summary(
+    BioTemplateSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_command(Command self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_device_summary(
+    DeviceSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_command(Command self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_command_kind(CommandKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_credential_summary(
+    CredentialSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_device_summary(DeviceSummary self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_hidden_authenticator(
+    HiddenAuthenticator self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_bio_template_summary(
+    List<BioTemplateSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_credential_summary(
+    List<CredentialSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_device_summary(
+    List<DeviceSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_hidden_authenticator(
+    List<HiddenAuthenticator> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -61,16 +246,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_device_summary(
+    DeviceSummary? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_preferences(Preferences self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_snapshot(Snapshot self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

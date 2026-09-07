@@ -8,7 +8,17 @@ void main() {
   testWidgets('Desktop title bar controls the native window', (tester) async {
     await app.main();
     await tester.pumpAndSettle();
-    expect(find.textContaining('Result: `Hello, Tom!`'), findsOneWidget);
+    expect(find.text('认证器'), findsNWidgets(2));
+    expect(find.text('重新扫描'), findsOneWidget);
+    await tester.tap(find.text('凭证'));
+    await tester.pumpAndSettle();
+    expect(find.text('凭证管理'), findsOneWidget);
+    await tester.tap(find.text('指纹'));
+    await tester.pumpAndSettle();
+    expect(find.text('指纹管理'), findsOneWidget);
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    expect(find.text('已隐藏的认证器'), findsOneWidget);
     expect(find.text('FidoKeeper'), findsOneWidget);
     expect(await windowManager.getTitle(), 'FidoKeeper');
 

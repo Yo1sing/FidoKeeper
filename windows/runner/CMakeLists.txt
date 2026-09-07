@@ -38,3 +38,9 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# 支持直接运行构建目录，也支持 Flutter 的安装/打包步骤。
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${FIDO_RUNTIME_FILES} "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+  VERBATIM)

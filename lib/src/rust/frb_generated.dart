@@ -3,7 +3,8 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/simple.dart';
+import 'api/keeper.dart';
+import 'api/models.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -69,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1918914929;
+  int get rustContentHash => 424683704;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,9 +82,11 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  String crateApiSimpleGreet({required String name});
+  Future<Snapshot> crateApiKeeperDispatch({required Command command});
 
   Future<void> crateApiSimpleInitApp();
+
+  Future<Preferences> crateApiModelsPreferencesDefault();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -95,27 +98,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  String crateApiSimpleGreet({required String name}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+  Future<Snapshot> crateApiKeeperDispatch({required Command command}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          sse_encode_box_autoadd_command(command, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: null,
+          decodeSuccessData: sse_decode_snapshot,
+          decodeErrorData: sse_decode_String,
         ),
-        constMeta: kCrateApiSimpleGreetConstMeta,
-        argValues: [name],
+        constMeta: kCrateApiKeeperDispatchConstMeta,
+        argValues: [command],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleGreetConstMeta =>
-      const TaskConstMeta(debugName: "greet", argNames: ["name"]);
+  TaskConstMeta get kCrateApiKeeperDispatchConstMeta =>
+      const TaskConstMeta(debugName: "dispatch", argNames: ["command"]);
 
   @override
   Future<void> crateApiSimpleInitApp() {
@@ -144,6 +152,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiSimpleInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
+  @override
+  Future<Preferences> crateApiModelsPreferencesDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_preferences,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiModelsPreferencesDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiModelsPreferencesDefaultConstMeta =>
+      const TaskConstMeta(debugName: "preferences_default", argNames: []);
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -151,9 +186,177 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BioTemplateSummary dco_decode_bio_template_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return BioTemplateSummary(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  Command dco_decode_box_autoadd_command(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_command(raw);
+  }
+
+  @protected
+  DeviceSummary dco_decode_box_autoadd_device_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_device_summary(raw);
+  }
+
+  @protected
+  Command dco_decode_command(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return Command(
+      kind: dco_decode_command_kind(arr[0]),
+      value: dco_decode_String(arr[1]),
+      pin: dco_decode_String(arr[2]),
+      newPin: dco_decode_String(arr[3]),
+      confirmPin: dco_decode_String(arr[4]),
+      confirmed: dco_decode_bool(arr[5]),
+    );
+  }
+
+  @protected
+  CommandKind dco_decode_command_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return CommandKind.values[raw as int];
+  }
+
+  @protected
+  CredentialSummary dco_decode_credential_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return CredentialSummary(
+      id: dco_decode_String(arr[0]),
+      rpId: dco_decode_String(arr[1]),
+      rpName: dco_decode_String(arr[2]),
+      userName: dco_decode_String(arr[3]),
+      userDisplayName: dco_decode_String(arr[4]),
+    );
+  }
+
+  @protected
+  DeviceSummary dco_decode_device_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return DeviceSummary(
+      path: dco_decode_String(arr[0]),
+      label: dco_decode_String(arr[1]),
+      protocol: dco_decode_String(arr[2]),
+      credentialManagement: dco_decode_bool(arr[3]),
+      pin: dco_decode_bool(arr[4]),
+      fingerprint: dco_decode_bool(arr[5]),
+    );
+  }
+
+  @protected
+  HiddenAuthenticator dco_decode_hidden_authenticator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return HiddenAuthenticator(
+      path: dco_decode_String(arr[0]),
+      label: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  List<BioTemplateSummary> dco_decode_list_bio_template_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_bio_template_summary).toList();
+  }
+
+  @protected
+  List<CredentialSummary> dco_decode_list_credential_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_credential_summary).toList();
+  }
+
+  @protected
+  List<DeviceSummary> dco_decode_list_device_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_device_summary).toList();
+  }
+
+  @protected
+  List<HiddenAuthenticator> dco_decode_list_hidden_authenticator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_hidden_authenticator).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  DeviceSummary? dco_decode_opt_box_autoadd_device_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_device_summary(raw);
+  }
+
+  @protected
+  Preferences dco_decode_preferences(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return Preferences(
+      locale: dco_decode_String(arr[0]),
+      theme: dco_decode_String(arr[1]),
+      hiddenAuthenticators: dco_decode_list_hidden_authenticator(arr[2]),
+    );
+  }
+
+  @protected
+  Snapshot dco_decode_snapshot(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return Snapshot(
+      devices: dco_decode_list_device_summary(arr[0]),
+      active: dco_decode_opt_box_autoadd_device_summary(arr[1]),
+      credentials: dco_decode_list_credential_summary(arr[2]),
+      existing: dco_decode_u_64(arr[3]),
+      remaining: dco_decode_u_64(arr[4]),
+      templates: dco_decode_list_bio_template_summary(arr[5]),
+      preferences: dco_decode_preferences(arr[6]),
+      query: dco_decode_String(arr[7]),
+    );
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -176,10 +379,233 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BioTemplateSummary sse_decode_bio_template_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    return BioTemplateSummary(id: var_id, name: var_name);
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  Command sse_decode_box_autoadd_command(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_command(deserializer));
+  }
+
+  @protected
+  DeviceSummary sse_decode_box_autoadd_device_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_device_summary(deserializer));
+  }
+
+  @protected
+  Command sse_decode_command(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_command_kind(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    var var_pin = sse_decode_String(deserializer);
+    var var_newPin = sse_decode_String(deserializer);
+    var var_confirmPin = sse_decode_String(deserializer);
+    var var_confirmed = sse_decode_bool(deserializer);
+    return Command(
+      kind: var_kind,
+      value: var_value,
+      pin: var_pin,
+      newPin: var_newPin,
+      confirmPin: var_confirmPin,
+      confirmed: var_confirmed,
+    );
+  }
+
+  @protected
+  CommandKind sse_decode_command_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return CommandKind.values[inner];
+  }
+
+  @protected
+  CredentialSummary sse_decode_credential_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_rpId = sse_decode_String(deserializer);
+    var var_rpName = sse_decode_String(deserializer);
+    var var_userName = sse_decode_String(deserializer);
+    var var_userDisplayName = sse_decode_String(deserializer);
+    return CredentialSummary(
+      id: var_id,
+      rpId: var_rpId,
+      rpName: var_rpName,
+      userName: var_userName,
+      userDisplayName: var_userDisplayName,
+    );
+  }
+
+  @protected
+  DeviceSummary sse_decode_device_summary(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_path = sse_decode_String(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_protocol = sse_decode_String(deserializer);
+    var var_credentialManagement = sse_decode_bool(deserializer);
+    var var_pin = sse_decode_bool(deserializer);
+    var var_fingerprint = sse_decode_bool(deserializer);
+    return DeviceSummary(
+      path: var_path,
+      label: var_label,
+      protocol: var_protocol,
+      credentialManagement: var_credentialManagement,
+      pin: var_pin,
+      fingerprint: var_fingerprint,
+    );
+  }
+
+  @protected
+  HiddenAuthenticator sse_decode_hidden_authenticator(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_path = sse_decode_String(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    return HiddenAuthenticator(path: var_path, label: var_label);
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  List<BioTemplateSummary> sse_decode_list_bio_template_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <BioTemplateSummary>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_bio_template_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CredentialSummary> sse_decode_list_credential_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CredentialSummary>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_credential_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<DeviceSummary> sse_decode_list_device_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DeviceSummary>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_device_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<HiddenAuthenticator> sse_decode_list_hidden_authenticator(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <HiddenAuthenticator>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_hidden_authenticator(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  DeviceSummary? sse_decode_opt_box_autoadd_device_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_device_summary(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  Preferences sse_decode_preferences(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_locale = sse_decode_String(deserializer);
+    var var_theme = sse_decode_String(deserializer);
+    var var_hiddenAuthenticators = sse_decode_list_hidden_authenticator(
+      deserializer,
+    );
+    return Preferences(
+      locale: var_locale,
+      theme: var_theme,
+      hiddenAuthenticators: var_hiddenAuthenticators,
+    );
+  }
+
+  @protected
+  Snapshot sse_decode_snapshot(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_devices = sse_decode_list_device_summary(deserializer);
+    var var_active = sse_decode_opt_box_autoadd_device_summary(deserializer);
+    var var_credentials = sse_decode_list_credential_summary(deserializer);
+    var var_existing = sse_decode_u_64(deserializer);
+    var var_remaining = sse_decode_u_64(deserializer);
+    var var_templates = sse_decode_list_bio_template_summary(deserializer);
+    var var_preferences = sse_decode_preferences(deserializer);
+    var var_query = sse_decode_String(deserializer);
+    return Snapshot(
+      devices: var_devices,
+      active: var_active,
+      credentials: var_credentials,
+      existing: var_existing,
+      remaining: var_remaining,
+      templates: var_templates,
+      preferences: var_preferences,
+      query: var_query,
+    );
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -194,21 +620,145 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bio_template_summary(
+    BioTemplateSummary self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_command(Command self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_command(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_device_summary(
+    DeviceSummary self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_device_summary(self, serializer);
+  }
+
+  @protected
+  void sse_encode_command(Command self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_command_kind(self.kind, serializer);
+    sse_encode_String(self.value, serializer);
+    sse_encode_String(self.pin, serializer);
+    sse_encode_String(self.newPin, serializer);
+    sse_encode_String(self.confirmPin, serializer);
+    sse_encode_bool(self.confirmed, serializer);
+  }
+
+  @protected
+  void sse_encode_command_kind(CommandKind self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_credential_summary(
+    CredentialSummary self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.rpId, serializer);
+    sse_encode_String(self.rpName, serializer);
+    sse_encode_String(self.userName, serializer);
+    sse_encode_String(self.userDisplayName, serializer);
+  }
+
+  @protected
+  void sse_encode_device_summary(DeviceSummary self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.path, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_String(self.protocol, serializer);
+    sse_encode_bool(self.credentialManagement, serializer);
+    sse_encode_bool(self.pin, serializer);
+    sse_encode_bool(self.fingerprint, serializer);
+  }
+
+  @protected
+  void sse_encode_hidden_authenticator(
+    HiddenAuthenticator self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.path, serializer);
+    sse_encode_String(self.label, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_list_bio_template_summary(
+    List<BioTemplateSummary> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_bio_template_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_credential_summary(
+    List<CredentialSummary> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_credential_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_device_summary(
+    List<DeviceSummary> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_device_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_hidden_authenticator(
+    List<HiddenAuthenticator> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_hidden_authenticator(item, serializer);
+    }
   }
 
   @protected
@@ -222,6 +772,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_device_summary(
+    DeviceSummary? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_device_summary(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_preferences(Preferences self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.locale, serializer);
+    sse_encode_String(self.theme, serializer);
+    sse_encode_list_hidden_authenticator(self.hiddenAuthenticators, serializer);
+  }
+
+  @protected
+  void sse_encode_snapshot(Snapshot self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_device_summary(self.devices, serializer);
+    sse_encode_opt_box_autoadd_device_summary(self.active, serializer);
+    sse_encode_list_credential_summary(self.credentials, serializer);
+    sse_encode_u_64(self.existing, serializer);
+    sse_encode_u_64(self.remaining, serializer);
+    sse_encode_list_bio_template_summary(self.templates, serializer);
+    sse_encode_preferences(self.preferences, serializer);
+    sse_encode_String(self.query, serializer);
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
@@ -230,17 +820,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }
