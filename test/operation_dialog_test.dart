@@ -131,6 +131,11 @@ void main() {
     await tester.tap(find.text('认证器').first);
     await tester.pumpAndSettle();
     expect(find.text('测试认证器'), findsOneWidget);
+    expect(find.text('轻触以连接'), findsOneWidget);
+    expect(find.text('CTAP2'), findsOneWidget);
+    expect(find.text('PIN'), findsOneWidget);
+    expect(find.text('凭证管理'), findsOneWidget);
+    expect(find.text('本机 HID'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -194,6 +199,69 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
       'example.com',
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('认证器空列表展示扫描引导', (tester) async {
+    api.snapshot = Snapshot(
+      devices: const [],
+      credentials: const [],
+      existing: BigInt.zero,
+      remaining: BigInt.zero,
+      templates: const [],
+      preferences: api.snapshot.preferences,
+      query: '',
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('未发现可用认证器'), findsOneWidget);
+    expect(find.text('等待插入 USB 密钥或贴上 NFC 密钥'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('已连接认证器显示状态、能力并打开详情', (tester) async {
+    final original = api.snapshot;
+    api.snapshot = Snapshot(
+      devices: const [
+        DeviceSummary(
+          label: 'USB 密钥',
+          path: 'usb:demo',
+          protocol: 'CTAP2',
+          credentialManagement: true,
+          pin: true,
+          fingerprint: true,
+        ),
+      ],
+      active: const DeviceSummary(
+        label: 'USB 密钥',
+        path: 'usb:demo',
+        protocol: 'CTAP2',
+        credentialManagement: true,
+        pin: true,
+        fingerprint: true,
+      ),
+      credentials: original.credentials,
+      existing: original.existing,
+      remaining: original.remaining,
+      templates: original.templates,
+      preferences: original.preferences,
+      query: original.query,
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    expect(find.text('USB 密钥'), findsOneWidget);
+    expect(find.text('已连接'), findsOneWidget);
+    expect(find.text('USB'), findsOneWidget);
+    expect(find.text('指纹'), findsNWidgets(2));
+    expect(find.text('断开连接'), findsOneWidget);
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('详情'));
+    await tester.pumpAndSettle();
+    expect(find.text('usb:demo'), findsOneWidget);
+    expect(find.text('支持'), findsNWidgets(3));
+    await tester.tap(find.text('关闭').last);
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }
