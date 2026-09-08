@@ -121,6 +121,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     String? detail,
     bool reset = false,
     bool changePin = false,
+    bool askPin = true,
   }) async {
     final completed = await showDialog<bool>(
       context: context,
@@ -130,6 +131,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         detail: detail,
         reset: reset,
         changePin: changePin,
+        askPin: askPin,
         tr: tr,
         onSubmit: (pin, newPin, confirmPin) => _dispatch(
           kind,
@@ -241,6 +243,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
                         busy: _busy,
                         closing: _closing,
                         tr: tr,
+                        onAction: _act,
                         onPrompt: _prompt,
                       ),
                       _ => SettingsPage(

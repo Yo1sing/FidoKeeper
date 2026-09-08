@@ -17,4 +17,5 @@ typedef PromptOperation = Future<void> Function(
   String? detail,
   bool reset,
   bool changePin,
+  bool askPin,
 });

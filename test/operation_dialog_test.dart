@@ -31,9 +31,37 @@ class FakeApi extends Fake implements RustLibApi {
     ),
     query: '',
   );
+  Snapshot _copy({DeviceSummary? active, bool clearActive = false}) => Snapshot(
+    devices: snapshot.devices,
+    active: clearActive ? null : (active ?? snapshot.active),
+    credentials: snapshot.credentials,
+    existing: snapshot.existing,
+    remaining: snapshot.remaining,
+    templates: snapshot.templates,
+    preferences: snapshot.preferences,
+    query: snapshot.query,
+  );
+
   @override
   Future<Snapshot> crateApiKeeperDispatch({required Command command}) async {
     if (command.kind == CommandKind.load || command.kind == CommandKind.scan) {
+      return snapshot;
+    }
+    if (command.kind == CommandKind.connect) {
+      if (operation != null) {
+        snapshot = await operation!(command);
+      }
+      final matches = snapshot.devices.where(
+        (item) => item.path == command.value,
+      );
+      if (matches.isEmpty) {
+        throw StateError('认证器已断开，请重新扫描');
+      }
+      snapshot = _copy(active: matches.first);
+      return snapshot;
+    }
+    if (command.kind == CommandKind.disconnect) {
+      snapshot = _copy(clearActive: true);
       return snapshot;
     }
     return operation == null ? snapshot : operation!(command);
@@ -48,12 +76,17 @@ void main() {
   });
   tearDown(RustLib.dispose);
 
+  Finder pinField() => find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.byType(TextField),
+  );
+
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     await tester.tap(find.text('测试认证器'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '1234');
+    await tester.enterText(pinField(), '1234');
   }
 
   testWidgets('取消后退场动画和再次打开不访问已释放控制器', (tester) async {
@@ -65,10 +98,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('测试认证器'));
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      isEmpty,
-    );
+    expect(tester.widget<TextField>(pinField()).controller!.text, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -91,11 +121,8 @@ void main() {
     await tester.tap(find.text('确认'));
     await tester.pumpAndSettle();
     expect(find.textContaining('PIN 码错误'), findsOneWidget);
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      isEmpty,
-    );
-    await tester.enterText(find.byType(TextField), '5678');
+    expect(tester.widget<TextField>(pinField()).controller!.text, isEmpty);
+    await tester.enterText(pinField(), '5678');
     await tester.tap(find.text('确认'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
@@ -121,17 +148,17 @@ void main() {
     expect(find.text('重新扫描'), findsOneWidget);
     await tester.tap(find.text('凭证'));
     await tester.pumpAndSettle();
-    expect(find.text('请先在认证器页面连接设备'), findsOneWidget);
+    expect(find.text('请先在认证器页面选择设备'), findsOneWidget);
     await tester.tap(find.text('指纹'));
     await tester.pumpAndSettle();
-    expect(find.text('请连接支持指纹的认证器'), findsOneWidget);
+    expect(find.text('请先在认证器页面选择设备'), findsOneWidget);
     await tester.tap(find.text('设置').first);
     await tester.pumpAndSettle();
     expect(find.text('已隐藏的认证器'), findsOneWidget);
     await tester.tap(find.text('认证器').first);
     await tester.pumpAndSettle();
     expect(find.text('测试认证器'), findsOneWidget);
-    expect(find.text('轻触以连接'), findsOneWidget);
+    expect(find.text('轻触以选择并输入 PIN'), findsOneWidget);
     expect(find.text('CTAP2'), findsOneWidget);
     expect(find.text('PIN'), findsOneWidget);
     expect(find.text('凭证管理'), findsOneWidget);
@@ -175,14 +202,11 @@ void main() {
 
     await tester.tap(find.text('指纹'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('读取指纹'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '1234');
-    await tester.tap(find.text('确认'));
-    await tester.pumpAndSettle();
+    expect(find.text('测试认证器'), findsOneWidget);
+    expect(find.text('已解锁'), findsOneWidget);
+    expect(find.text('读取指纹'), findsNothing);
     expect(commands.last.kind, CommandKind.listBio);
-    expect(commands.last.pin, '1234');
-    expect(commands.last.confirmed, isTrue);
+    expect(commands.last.pin, isEmpty);
 
     await tester.tap(find.text('设置').first);
     await tester.pumpAndSettle();
@@ -250,7 +274,7 @@ void main() {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     expect(find.text('USB 密钥'), findsOneWidget);
-    expect(find.text('已连接'), findsOneWidget);
+    expect(find.text('已解锁'), findsOneWidget);
     expect(find.text('USB'), findsOneWidget);
     expect(find.text('指纹'), findsNWidgets(2));
     expect(find.text('断开连接'), findsOneWidget);
@@ -262,6 +286,24 @@ void main() {
     expect(find.text('支持'), findsNWidgets(3));
     await tester.tap(find.text('关闭').last);
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('选择认证器后指纹页共享同一设备', (tester) async {
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('测试认证器'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.enterText(pinField(), '1234');
+    await tester.tap(find.text('确认'));
+    await tester.pumpAndSettle();
+    expect(find.text('已解锁'), findsOneWidget);
+    await tester.tap(find.text('指纹'));
+    await tester.pumpAndSettle();
+    expect(find.text('测试认证器'), findsOneWidget);
+    expect(find.text('已解锁'), findsOneWidget);
+    expect(find.text('当前认证器不支持指纹'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

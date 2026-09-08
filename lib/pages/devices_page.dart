@@ -89,7 +89,7 @@ class DevicesPage extends StatelessWidget {
                                   onConnect: () => onPrompt(
                                     context,
                                     backend.CommandKind.connect,
-                                    tr('连接认证器', 'Connect authenticator'),
+                                    tr('选择认证器', 'Select authenticator'),
                                     value: device.path,
                                     detail: device.label,
                                   ),
@@ -376,8 +376,8 @@ class _DeviceCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 connected
-                    ? tr('已连接', 'Connected')
-                    : tr('轻触以连接', 'Tap to connect'),
+                    ? tr('已解锁', 'Unlocked')
+                    : tr('轻触以选择并输入 PIN', 'Tap to select and enter PIN'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: connected ? scheme.primary : scheme.onSurfaceVariant,
                 ),
