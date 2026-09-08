@@ -5,7 +5,7 @@ import '../ui/callbacks.dart';
 import '../widgets/action_button.dart';
 import '../widgets/selected_device_banner.dart';
 
-class FingerprintsPage extends StatefulWidget {
+class FingerprintsPage extends StatelessWidget {
   const FingerprintsPage({
     super.key,
     required this.snapshot,
@@ -24,33 +24,8 @@ class FingerprintsPage extends StatefulWidget {
   final PromptOperation onPrompt;
 
   @override
-  State<FingerprintsPage> createState() => _FingerprintsPageState();
-}
-
-class _FingerprintsPageState extends State<FingerprintsPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _readIfReady();
-    });
-  }
-
-  void _readIfReady() {
-    final active = widget.snapshot?.active;
-    if (widget.busy || widget.closing) return;
-    if (active == null || active.fingerprint != true) return;
-    widget.onAction(backend.CommandKind.listBio);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final active = widget.snapshot?.active;
-    final snapshot = widget.snapshot;
-    final busy = widget.busy;
-    final closing = widget.closing;
-    final tr = widget.tr;
+    final active = snapshot?.active;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -62,7 +37,7 @@ class _FingerprintsPageState extends State<FingerprintsPage> {
         SelectedDeviceBanner(device: active, tr: tr),
         if (active != null) ...[
           const SizedBox(height: 16),
-          if (active.fingerprint != true)
+          if (snapshot?.canManageFingerprints != true)
             Text(
               tr(
                 '当前认证器不支持指纹',
@@ -73,11 +48,10 @@ class _FingerprintsPageState extends State<FingerprintsPage> {
             actionButton(
               disabled: busy || closing,
               tr('录入指纹', 'Enroll fingerprint'),
-              () => widget.onPrompt(
+              () => onPrompt(
                 context,
                 backend.CommandKind.enrollBio,
                 tr('录入指纹', 'Enroll fingerprint'),
-                askPin: false,
                 detail: tr(
                   '提交后请在设备上重复采样。',
                   'Touch the sensor repeatedly when prompted.',
@@ -91,14 +65,13 @@ class _FingerprintsPageState extends State<FingerprintsPage> {
                   template.name.isEmpty ? template.id : template.name,
                 ),
                 trailing: IconButton(
-                  onPressed: busy
+                  onPressed: busy || closing
                       ? null
-                      : () => widget.onPrompt(
+                      : () => onPrompt(
                           context,
                           backend.CommandKind.deleteBio,
                           tr('永久删除指纹', 'Permanently delete fingerprint'),
                           value: template.id,
-                          askPin: false,
                           detail: template.name.isEmpty
                               ? template.id
                               : template.name,
@@ -106,7 +79,7 @@ class _FingerprintsPageState extends State<FingerprintsPage> {
                   icon: const Icon(Icons.delete_outline),
                 ),
               ),
-            if (snapshot.templates.isEmpty && !busy)
+            if (snapshot!.templates.isEmpty && !busy)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: Text(

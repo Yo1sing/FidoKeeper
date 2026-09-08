@@ -104,7 +104,6 @@ class DevicesPage extends StatelessWidget {
                                     backend.CommandKind.reset,
                                     tr('重置认证器', 'Reset authenticator'),
                                     value: device.path,
-                                    reset: true,
                                     detail:
                                         '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
                                   ),
@@ -124,7 +123,7 @@ class DevicesPage extends StatelessWidget {
   }
 
   void _showDetails(BuildContext context, DeviceSummary device) {
-    final transport = _transportOf(device.path);
+    final transport = device.transport;
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -285,7 +284,7 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final transport = _transportOf(device.path);
+    final transport = device.transport;
 
     return Material(
       color: connected
@@ -447,24 +446,15 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-enum _Transport { usb, nfc, hid }
-
-_Transport _transportOf(String path) {
-  final value = path.toLowerCase();
-  if (value.startsWith('nfc')) return _Transport.nfc;
-  if (value.startsWith('usb')) return _Transport.usb;
-  return _Transport.hid;
-}
-
-IconData _transportIcon(_Transport transport) => switch (transport) {
-  _Transport.usb => Icons.usb,
-  _Transport.nfc => Icons.nfc,
-  _Transport.hid => Icons.key,
+IconData _transportIcon(Transport transport) => switch (transport) {
+  Transport.usb => Icons.usb,
+  Transport.nfc => Icons.nfc,
+  Transport.hid => Icons.key,
 };
 
-String _transportLabel(Translate tr, _Transport transport) =>
+String _transportLabel(Translate tr, Transport transport) =>
     switch (transport) {
-      _Transport.usb => 'USB',
-      _Transport.nfc => 'NFC',
-      _Transport.hid => tr('本机 HID', 'Local HID'),
+      Transport.usb => 'USB',
+      Transport.nfc => 'NFC',
+      Transport.hid => tr('本机 HID', 'Local HID'),
     };

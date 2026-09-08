@@ -7,7 +7,8 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `from_path`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 class BioTemplateSummary {
   final String id;
@@ -63,6 +64,7 @@ class CredentialSummary {
 }
 
 class DeviceSummary {
+  final Transport transport;
   final String path;
   final String label;
   final String protocol;
@@ -71,6 +73,7 @@ class DeviceSummary {
   final bool fingerprint;
 
   const DeviceSummary({
+    required this.transport,
     required this.path,
     required this.label,
     required this.protocol,
@@ -81,6 +84,7 @@ class DeviceSummary {
 
   @override
   int get hashCode =>
+      transport.hashCode ^
       path.hashCode ^
       label.hashCode ^
       protocol.hashCode ^
@@ -93,6 +97,7 @@ class DeviceSummary {
       identical(this, other) ||
       other is DeviceSummary &&
           runtimeType == other.runtimeType &&
+          transport == other.transport &&
           path == other.path &&
           label == other.label &&
           protocol == other.protocol &&
@@ -146,3 +151,5 @@ class Preferences {
           theme == other.theme &&
           hiddenAuthenticators == other.hiddenAuthenticators;
 }
+
+enum Transport { usb, nfc, hid }

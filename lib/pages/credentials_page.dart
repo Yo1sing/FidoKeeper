@@ -39,7 +39,7 @@ class CredentialsPage extends StatelessWidget {
         SelectedDeviceBanner(device: active, tr: tr),
         if (active != null) ...[
           const SizedBox(height: 16),
-          if (active.credentialManagement != true)
+          if (snapshot?.canManageCredentials != true)
             Text(
               tr(
                 '当前认证器不支持凭证管理',
@@ -64,8 +64,6 @@ class CredentialsPage extends StatelessWidget {
                     context,
                     backend.CommandKind.changePin,
                     tr('更改 PIN', 'Change PIN'),
-                    changePin: true,
-                    askPin: false,
                   ),
                 ),
               ],
@@ -76,7 +74,7 @@ class CredentialsPage extends StatelessWidget {
             ),
             TextField(
               controller: searchController,
-              enabled: !busy,
+              enabled: !busy && !closing,
               decoration: InputDecoration(
                 labelText: tr(
                   '搜索网站或用户，回车筛选',
@@ -98,14 +96,13 @@ class CredentialsPage extends StatelessWidget {
                   isThreeLine: true,
                   trailing: IconButton(
                     tooltip: tr('删除凭证', 'Delete credential'),
-                    onPressed: busy
+                    onPressed: busy || closing
                         ? null
                         : () => onPrompt(
                             context,
                             backend.CommandKind.deleteCredential,
                             tr('永久删除凭证', 'Permanently delete credential'),
                             value: credential.id,
-                            askPin: false,
                             detail:
                                 '${credential.rpId}\n${credential.userName}\n${tr('删除后可能无法再登录此账号，操作无法撤销。', 'You may lose access to this account. This cannot be undone.')}',
                           ),

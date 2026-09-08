@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 424683704;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1514202018;
 
 // Section: executor
 
@@ -111,6 +111,36 @@ fn wire__crate__api__simple__init_app_impl(
                     std::result::Result::Ok(output_ok)
                 })())
             }
+        },
+    )
+}
+fn wire__crate__api__keeper__operation_inputs_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "operation_inputs",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_kind = <crate::api::keeper::CommandKind>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::keeper::operation_inputs(api_kind))?;
+                std::result::Result::Ok(output_ok)
+            })())
         },
     )
 }
@@ -201,23 +231,25 @@ impl SseDecode for crate::api::keeper::CommandKind {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <i32>::sse_decode(deserializer);
         return match inner {
-            0 => crate::api::keeper::CommandKind::Load,
-            1 => crate::api::keeper::CommandKind::Scan,
-            2 => crate::api::keeper::CommandKind::Connect,
-            3 => crate::api::keeper::CommandKind::Disconnect,
-            4 => crate::api::keeper::CommandKind::Hide,
-            5 => crate::api::keeper::CommandKind::Unhide,
-            6 => crate::api::keeper::CommandKind::ListCredentials,
-            7 => crate::api::keeper::CommandKind::DeleteCredential,
-            8 => crate::api::keeper::CommandKind::ChangePin,
-            9 => crate::api::keeper::CommandKind::ListBio,
-            10 => crate::api::keeper::CommandKind::EnrollBio,
-            11 => crate::api::keeper::CommandKind::DeleteBio,
-            12 => crate::api::keeper::CommandKind::Reset,
-            13 => crate::api::keeper::CommandKind::Filter,
-            14 => crate::api::keeper::CommandKind::Theme,
-            15 => crate::api::keeper::CommandKind::Locale,
-            16 => crate::api::keeper::CommandKind::Shutdown,
+            0 => crate::api::keeper::CommandKind::Initialize,
+            1 => crate::api::keeper::CommandKind::EnterFingerprints,
+            2 => crate::api::keeper::CommandKind::Load,
+            3 => crate::api::keeper::CommandKind::Scan,
+            4 => crate::api::keeper::CommandKind::Connect,
+            5 => crate::api::keeper::CommandKind::Disconnect,
+            6 => crate::api::keeper::CommandKind::Hide,
+            7 => crate::api::keeper::CommandKind::Unhide,
+            8 => crate::api::keeper::CommandKind::ListCredentials,
+            9 => crate::api::keeper::CommandKind::DeleteCredential,
+            10 => crate::api::keeper::CommandKind::ChangePin,
+            11 => crate::api::keeper::CommandKind::ListBio,
+            12 => crate::api::keeper::CommandKind::EnrollBio,
+            13 => crate::api::keeper::CommandKind::DeleteBio,
+            14 => crate::api::keeper::CommandKind::Reset,
+            15 => crate::api::keeper::CommandKind::Filter,
+            16 => crate::api::keeper::CommandKind::Theme,
+            17 => crate::api::keeper::CommandKind::Locale,
+            18 => crate::api::keeper::CommandKind::Shutdown,
             _ => unreachable!("Invalid variant for CommandKind: {}", inner),
         };
     }
@@ -244,6 +276,7 @@ impl SseDecode for crate::api::models::CredentialSummary {
 impl SseDecode for crate::api::models::DeviceSummary {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_transport = <crate::api::models::Transport>::sse_decode(deserializer);
         let mut var_path = <String>::sse_decode(deserializer);
         let mut var_label = <String>::sse_decode(deserializer);
         let mut var_protocol = <String>::sse_decode(deserializer);
@@ -251,6 +284,7 @@ impl SseDecode for crate::api::models::DeviceSummary {
         let mut var_pin = <bool>::sse_decode(deserializer);
         let mut var_fingerprint = <bool>::sse_decode(deserializer);
         return crate::api::models::DeviceSummary {
+            transport: var_transport,
             path: var_path,
             label: var_label,
             protocol: var_protocol,
@@ -348,6 +382,20 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for crate::api::keeper::OperationInputs {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_askPin = <bool>::sse_decode(deserializer);
+        let mut var_changePin = <bool>::sse_decode(deserializer);
+        let mut var_requiresConfirmation = <bool>::sse_decode(deserializer);
+        return crate::api::keeper::OperationInputs {
+            ask_pin: var_askPin,
+            change_pin: var_changePin,
+            requires_confirmation: var_requiresConfirmation,
+        };
+    }
+}
+
 impl SseDecode for Option<crate::api::models::DeviceSummary> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -379,6 +427,8 @@ impl SseDecode for crate::api::models::Preferences {
 impl SseDecode for crate::api::keeper::Snapshot {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_canManageCredentials = <bool>::sse_decode(deserializer);
+        let mut var_canManageFingerprints = <bool>::sse_decode(deserializer);
         let mut var_devices = <Vec<crate::api::models::DeviceSummary>>::sse_decode(deserializer);
         let mut var_active = <Option<crate::api::models::DeviceSummary>>::sse_decode(deserializer);
         let mut var_credentials =
@@ -390,6 +440,8 @@ impl SseDecode for crate::api::keeper::Snapshot {
         let mut var_preferences = <crate::api::models::Preferences>::sse_decode(deserializer);
         let mut var_query = <String>::sse_decode(deserializer);
         return crate::api::keeper::Snapshot {
+            can_manage_credentials: var_canManageCredentials,
+            can_manage_fingerprints: var_canManageFingerprints,
             devices: var_devices,
             active: var_active,
             credentials: var_credentials,
@@ -398,6 +450,19 @@ impl SseDecode for crate::api::keeper::Snapshot {
             templates: var_templates,
             preferences: var_preferences,
             query: var_query,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::Transport {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::models::Transport::Usb,
+            1 => crate::api::models::Transport::Nfc,
+            2 => crate::api::models::Transport::Hid,
+            _ => unreachable!("Invalid variant for Transport: {}", inner),
         };
     }
 }
@@ -432,7 +497,7 @@ fn pde_ffi_dispatcher_primary_impl(
     match func_id {
         1 => wire__crate__api__keeper__dispatch_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__models__preferences_default_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__models__preferences_default_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -445,6 +510,7 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        3 => wire__crate__api__keeper__operation_inputs_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -498,23 +564,25 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::Command>
 impl flutter_rust_bridge::IntoDart for crate::api::keeper::CommandKind {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            Self::Load => 0.into_dart(),
-            Self::Scan => 1.into_dart(),
-            Self::Connect => 2.into_dart(),
-            Self::Disconnect => 3.into_dart(),
-            Self::Hide => 4.into_dart(),
-            Self::Unhide => 5.into_dart(),
-            Self::ListCredentials => 6.into_dart(),
-            Self::DeleteCredential => 7.into_dart(),
-            Self::ChangePin => 8.into_dart(),
-            Self::ListBio => 9.into_dart(),
-            Self::EnrollBio => 10.into_dart(),
-            Self::DeleteBio => 11.into_dart(),
-            Self::Reset => 12.into_dart(),
-            Self::Filter => 13.into_dart(),
-            Self::Theme => 14.into_dart(),
-            Self::Locale => 15.into_dart(),
-            Self::Shutdown => 16.into_dart(),
+            Self::Initialize => 0.into_dart(),
+            Self::EnterFingerprints => 1.into_dart(),
+            Self::Load => 2.into_dart(),
+            Self::Scan => 3.into_dart(),
+            Self::Connect => 4.into_dart(),
+            Self::Disconnect => 5.into_dart(),
+            Self::Hide => 6.into_dart(),
+            Self::Unhide => 7.into_dart(),
+            Self::ListCredentials => 8.into_dart(),
+            Self::DeleteCredential => 9.into_dart(),
+            Self::ChangePin => 10.into_dart(),
+            Self::ListBio => 11.into_dart(),
+            Self::EnrollBio => 12.into_dart(),
+            Self::DeleteBio => 13.into_dart(),
+            Self::Reset => 14.into_dart(),
+            Self::Filter => 15.into_dart(),
+            Self::Theme => 16.into_dart(),
+            Self::Locale => 17.into_dart(),
+            Self::Shutdown => 18.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -558,6 +626,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::CredentialSummary>
 impl flutter_rust_bridge::IntoDart for crate::api::models::DeviceSummary {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.transport.into_into_dart().into_dart(),
             self.path.into_into_dart().into_dart(),
             self.label.into_into_dart().into_dart(),
             self.protocol.into_into_dart().into_dart(),
@@ -601,6 +670,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::HiddenAuthenticator>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::keeper::OperationInputs {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ask_pin.into_into_dart().into_dart(),
+            self.change_pin.into_into_dart().into_dart(),
+            self.requires_confirmation.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::keeper::OperationInputs
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::OperationInputs>
+    for crate::api::keeper::OperationInputs
+{
+    fn into_into_dart(self) -> crate::api::keeper::OperationInputs {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::models::Preferences {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -626,6 +717,8 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::Preferences>
 impl flutter_rust_bridge::IntoDart for crate::api::keeper::Snapshot {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.can_manage_credentials.into_into_dart().into_dart(),
+            self.can_manage_fingerprints.into_into_dart().into_dart(),
             self.devices.into_into_dart().into_dart(),
             self.active.into_into_dart().into_dart(),
             self.credentials.into_into_dart().into_dart(),
@@ -643,6 +736,25 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::keeper::Snapshot>
     for crate::api::keeper::Snapshot
 {
     fn into_into_dart(self) -> crate::api::keeper::Snapshot {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::Transport {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Usb => 0.into_dart(),
+            Self::Nfc => 1.into_dart(),
+            Self::Hid => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::models::Transport {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::Transport>
+    for crate::api::models::Transport
+{
+    fn into_into_dart(self) -> crate::api::models::Transport {
         self
     }
 }
@@ -686,23 +798,25 @@ impl SseEncode for crate::api::keeper::CommandKind {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(
             match self {
-                crate::api::keeper::CommandKind::Load => 0,
-                crate::api::keeper::CommandKind::Scan => 1,
-                crate::api::keeper::CommandKind::Connect => 2,
-                crate::api::keeper::CommandKind::Disconnect => 3,
-                crate::api::keeper::CommandKind::Hide => 4,
-                crate::api::keeper::CommandKind::Unhide => 5,
-                crate::api::keeper::CommandKind::ListCredentials => 6,
-                crate::api::keeper::CommandKind::DeleteCredential => 7,
-                crate::api::keeper::CommandKind::ChangePin => 8,
-                crate::api::keeper::CommandKind::ListBio => 9,
-                crate::api::keeper::CommandKind::EnrollBio => 10,
-                crate::api::keeper::CommandKind::DeleteBio => 11,
-                crate::api::keeper::CommandKind::Reset => 12,
-                crate::api::keeper::CommandKind::Filter => 13,
-                crate::api::keeper::CommandKind::Theme => 14,
-                crate::api::keeper::CommandKind::Locale => 15,
-                crate::api::keeper::CommandKind::Shutdown => 16,
+                crate::api::keeper::CommandKind::Initialize => 0,
+                crate::api::keeper::CommandKind::EnterFingerprints => 1,
+                crate::api::keeper::CommandKind::Load => 2,
+                crate::api::keeper::CommandKind::Scan => 3,
+                crate::api::keeper::CommandKind::Connect => 4,
+                crate::api::keeper::CommandKind::Disconnect => 5,
+                crate::api::keeper::CommandKind::Hide => 6,
+                crate::api::keeper::CommandKind::Unhide => 7,
+                crate::api::keeper::CommandKind::ListCredentials => 8,
+                crate::api::keeper::CommandKind::DeleteCredential => 9,
+                crate::api::keeper::CommandKind::ChangePin => 10,
+                crate::api::keeper::CommandKind::ListBio => 11,
+                crate::api::keeper::CommandKind::EnrollBio => 12,
+                crate::api::keeper::CommandKind::DeleteBio => 13,
+                crate::api::keeper::CommandKind::Reset => 14,
+                crate::api::keeper::CommandKind::Filter => 15,
+                crate::api::keeper::CommandKind::Theme => 16,
+                crate::api::keeper::CommandKind::Locale => 17,
+                crate::api::keeper::CommandKind::Shutdown => 18,
                 _ => {
                     unimplemented!("");
                 }
@@ -726,6 +840,7 @@ impl SseEncode for crate::api::models::CredentialSummary {
 impl SseEncode for crate::api::models::DeviceSummary {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::models::Transport>::sse_encode(self.transport, serializer);
         <String>::sse_encode(self.path, serializer);
         <String>::sse_encode(self.label, serializer);
         <String>::sse_encode(self.protocol, serializer);
@@ -800,6 +915,15 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for crate::api::keeper::OperationInputs {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ask_pin, serializer);
+        <bool>::sse_encode(self.change_pin, serializer);
+        <bool>::sse_encode(self.requires_confirmation, serializer);
+    }
+}
+
 impl SseEncode for Option<crate::api::models::DeviceSummary> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -825,6 +949,8 @@ impl SseEncode for crate::api::models::Preferences {
 impl SseEncode for crate::api::keeper::Snapshot {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.can_manage_credentials, serializer);
+        <bool>::sse_encode(self.can_manage_fingerprints, serializer);
         <Vec<crate::api::models::DeviceSummary>>::sse_encode(self.devices, serializer);
         <Option<crate::api::models::DeviceSummary>>::sse_encode(self.active, serializer);
         <Vec<crate::api::models::CredentialSummary>>::sse_encode(self.credentials, serializer);
@@ -833,6 +959,23 @@ impl SseEncode for crate::api::keeper::Snapshot {
         <Vec<crate::api::models::BioTemplateSummary>>::sse_encode(self.templates, serializer);
         <crate::api::models::Preferences>::sse_encode(self.preferences, serializer);
         <String>::sse_encode(self.query, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::Transport {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::models::Transport::Usb => 0,
+                crate::api::models::Transport::Nfc => 1,
+                crate::api::models::Transport::Hid => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 

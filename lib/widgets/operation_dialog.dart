@@ -7,13 +7,11 @@ class OperationDialog extends StatefulWidget {
     required this.tr,
     required this.onSubmit,
     this.detail,
-    this.reset = false,
     this.changePin = false,
     this.askPin = true,
   });
   final String title;
   final String? detail;
-  final bool reset;
   final bool changePin;
   final bool askPin;
   final String Function(String, String) tr;
@@ -85,7 +83,7 @@ class _OperationDialogState extends State<OperationDialog> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(widget.detail!),
                   ),
-                if (!widget.reset && widget.askPin)
+                if (widget.askPin)
                   TextField(
                     controller: _pin,
                     autofocus: true,

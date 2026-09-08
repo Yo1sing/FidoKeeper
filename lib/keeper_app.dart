@@ -18,7 +18,9 @@ class KeeperApp extends StatefulWidget {
 
 class _KeeperAppState extends State<KeeperApp> with WindowListener {
   backend.Snapshot? _state;
-  bool _busy = false;
+  int _pending = 0;
+  bool get _busy => _pending > 0;
+  Future<void> _queue = Future<void>.value();
   bool _closing = false;
   String? _error;
   int _page = 0;
@@ -36,8 +38,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   }
 
   Future<void> _load() async {
-    await _act(backend.CommandKind.load);
-    await _act(backend.CommandKind.scan);
+    await _act(backend.CommandKind.initialize);
   }
 
   Future<void> _dispatch(
@@ -47,34 +48,43 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     String newPin = '',
     String confirmPin = '',
     bool confirmed = false,
+    bool enqueue = false,
   }) async {
-    if (_busy || _closing) {
+    if ((_busy && !enqueue) || _closing) {
       throw StateError(tr('请等待当前操作完成', 'Wait for the current operation'));
     }
     setState(() {
-      _busy = true;
+      _pending++;
       _error = null;
     });
     try {
-      final state = await backend.dispatch(
-        command: backend.Command(
-          kind: kind,
-          value: value,
-          pin: pin,
-          newPin: newPin,
-          confirmPin: confirmPin,
-          confirmed: confirmed,
+      final request = _queue.then(
+        (_) => backend.dispatch(
+          command: backend.Command(
+            kind: kind,
+            value: value,
+            pin: pin,
+            newPin: newPin,
+            confirmPin: confirmPin,
+            confirmed: confirmed,
+          ),
         ),
       );
+      _queue = request.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+      final state = await request;
       if (mounted) setState(() => _state = state);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _pending--);
     }
   }
 
-  Future<void> _act(backend.CommandKind kind, {String value = ''}) async {
+  Future<void> _act(
+    backend.CommandKind kind, {
+    String value = '',
+    bool enqueue = false,
+  }) async {
     try {
-      await _dispatch(kind, value: value);
+      await _dispatch(kind, value: value, enqueue: enqueue);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     }
@@ -85,6 +95,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     if (_closing) return;
     setState(() => _closing = true);
     try {
+      await _queue;
       await backend.dispatch(
         command: const backend.Command(
           kind: backend.CommandKind.shutdown,
@@ -119,19 +130,17 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     String title, {
     String value = '',
     String? detail,
-    bool reset = false,
-    bool changePin = false,
-    bool askPin = true,
   }) async {
+    if (_busy || _closing) return;
+    final inputs = backend.operationInputs(kind: kind);
     final completed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) => OperationDialog(
         title: title,
         detail: detail,
-        reset: reset,
-        changePin: changePin,
-        askPin: askPin,
+        changePin: inputs.changePin,
+        askPin: inputs.askPin,
         tr: tr,
         onSubmit: (pin, newPin, confirmPin) => _dispatch(
           kind,
@@ -139,7 +148,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           pin: pin,
           newPin: newPin,
           confirmPin: confirmPin,
-          confirmed: true,
+          confirmed: inputs.requiresConfirmation,
         ),
       ),
     );
@@ -178,7 +187,12 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           children: [
             NavigationRail(
               selectedIndex: _page,
-              onDestinationSelected: (index) => setState(() => _page = index),
+              onDestinationSelected: (index) {
+                setState(() => _page = index);
+                if (index == 2) {
+                  _act(backend.CommandKind.enterFingerprints, enqueue: true);
+                }
+              },
               labelType: NavigationRailLabelType.all,
               destinations: [
                 NavigationRailDestination(

@@ -124,6 +124,7 @@ impl<S: DeviceSource> CtapAuthenticator<S> {
     fn probe(&mut self, path: &str, label: String) -> Result<DeviceSummary, String> {
         let session = self.session(path)?;
         Ok(DeviceSummary {
+            transport: crate::api::models::Transport::from_path(path),
             path: path.to_owned(),
             label: if label.trim().is_empty() {
                 "FIDO 认证器".into()

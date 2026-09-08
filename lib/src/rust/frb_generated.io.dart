@@ -71,6 +71,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  OperationInputs dco_decode_operation_inputs(dynamic raw);
+
+  @protected
   DeviceSummary? dco_decode_opt_box_autoadd_device_summary(dynamic raw);
 
   @protected
@@ -78,6 +81,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Snapshot dco_decode_snapshot(dynamic raw);
+
+  @protected
+  Transport dco_decode_transport(dynamic raw);
 
   @protected
   BigInt dco_decode_u_64(dynamic raw);
@@ -151,6 +157,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  OperationInputs sse_decode_operation_inputs(SseDeserializer deserializer);
+
+  @protected
   DeviceSummary? sse_decode_opt_box_autoadd_device_summary(
     SseDeserializer deserializer,
   );
@@ -160,6 +169,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Snapshot sse_decode_snapshot(SseDeserializer deserializer);
+
+  @protected
+  Transport sse_decode_transport(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
@@ -246,6 +258,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_operation_inputs(
+    OperationInputs self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_device_summary(
     DeviceSummary? self,
     SseSerializer serializer,
@@ -256,6 +274,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_snapshot(Snapshot self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_transport(Transport self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);

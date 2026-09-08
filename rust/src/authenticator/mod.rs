@@ -216,6 +216,7 @@ impl Authenticator for NativeAuthenticator {
                 let session = Session::open(&path)?;
                 let ctap2 = (api.fido_dev_is_fido2)(session.raw());
                 result.push(DeviceSummary {
+                    transport: crate::api::models::Transport::from_path(&path),
                     path,
                     label: if label.is_empty() {
                         "FIDO 认证器".into()

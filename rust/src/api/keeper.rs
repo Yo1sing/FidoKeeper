@@ -10,6 +10,8 @@ use std::sync::{
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CommandKind {
+    Initialize,
+    EnterFingerprints,
     Load,
     Scan,
     Connect,
@@ -29,6 +31,26 @@ pub enum CommandKind {
     Shutdown,
 }
 
+// 输入要求属于操作协议，界面只负责渲染对应字段。
+#[derive(Clone, Debug, PartialEq)]
+pub struct OperationInputs {
+    pub ask_pin: bool,
+    pub change_pin: bool,
+    pub requires_confirmation: bool,
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn operation_inputs(kind: CommandKind) -> OperationInputs {
+    OperationInputs {
+        ask_pin: kind == CommandKind::Connect,
+        change_pin: kind == CommandKind::ChangePin,
+        requires_confirmation: matches!(
+            kind,
+            CommandKind::Reset | CommandKind::DeleteCredential | CommandKind::DeleteBio
+        ),
+    }
+}
+
 pub struct Command {
     pub kind: CommandKind,
     pub value: String,
@@ -40,6 +62,8 @@ pub struct Command {
 
 #[derive(Clone)]
 pub struct Snapshot {
+    pub can_manage_credentials: bool,
+    pub can_manage_fingerprints: bool,
     pub devices: Vec<DeviceSummary>,
     pub active: Option<DeviceSummary>,
     pub credentials: Vec<CredentialSummary>,
@@ -76,6 +100,13 @@ impl State {
     }
     fn snapshot(&self) -> Snapshot {
         Snapshot {
+            can_manage_credentials: self
+                .active
+                .as_ref()
+                .is_some_and(|d| d.credential_management && d.pin)
+                && self.unlocked_pin.is_some(),
+            can_manage_fingerprints: self.active.as_ref().is_some_and(|d| d.fingerprint)
+                && self.unlocked_pin.is_some(),
             devices: self
                 .devices
                 .iter()
@@ -107,6 +138,18 @@ impl State {
             preferences: self.preferences.clone(),
             query: self.query.clone(),
         }
+    }
+    fn scan(&mut self) -> Result<(), String> {
+        let devices = self.hardware.discover()?;
+        if self
+            .active
+            .as_ref()
+            .is_some_and(|a| !devices.iter().any(|d| d.path == a.path))
+        {
+            self.disconnect();
+        }
+        self.devices = devices;
+        Ok(())
     }
     fn disconnect(&mut self) {
         self.active = None;
@@ -142,31 +185,32 @@ impl State {
         let pin = zeroize::Zeroizing::new(pin);
         let new_pin = zeroize::Zeroizing::new(new_pin);
         let confirm_pin = zeroize::Zeroizing::new(confirm_pin);
-        if matches!(
-            kind,
-            CommandKind::Reset | CommandKind::DeleteCredential | CommandKind::DeleteBio
-        ) && !confirmed
-        {
+        if operation_inputs(kind).requires_confirmation && !confirmed {
             return Err("请先确认此不可撤销操作".to_owned());
         }
         if kind == CommandKind::ChangePin && new_pin != confirm_pin {
             return Err("两次输入的 PIN 不一致".to_owned());
         }
         match kind {
+            CommandKind::Initialize => {
+                self.preferences = preferences::load()?;
+                self.scan()?;
+                return Ok(());
+            }
+            CommandKind::EnterFingerprints => {
+                if self.snapshot().can_manage_fingerprints {
+                    let device = self.active()?;
+                    let pin = self.session_pin(&pin)?;
+                    self.templates = self.hardware.fingerprints(&device.path, &pin)?;
+                }
+                return Ok(());
+            }
             CommandKind::Load => {
                 self.preferences = preferences::load()?;
                 return Ok(());
             }
             CommandKind::Scan => {
-                let devices = self.hardware.discover()?;
-                if self
-                    .active
-                    .as_ref()
-                    .is_some_and(|a| !devices.iter().any(|d| d.path == a.path))
-                {
-                    self.disconnect();
-                }
-                self.devices = devices;
+                self.scan()?;
                 return Ok(());
             }
             CommandKind::Disconnect | CommandKind::Shutdown => {
@@ -360,6 +404,7 @@ mod tests {
 
     fn device(path: &str) -> DeviceSummary {
         DeviceSummary {
+            transport: crate::api::models::Transport::from_path(path),
             label: path.to_owned(),
             path: path.to_owned(),
             protocol: "CTAP2".to_owned(),
@@ -450,6 +495,50 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn input_contract_matches_session_operations() {
+        assert!(operation_inputs(CommandKind::Connect).ask_pin);
+        let change = operation_inputs(CommandKind::ChangePin);
+        assert!(change.change_pin);
+        assert!(!change.ask_pin);
+        for kind in [
+            CommandKind::Reset,
+            CommandKind::DeleteCredential,
+            CommandKind::DeleteBio,
+        ] {
+            let inputs = operation_inputs(kind);
+            assert!(inputs.requires_confirmation);
+            assert!(!inputs.ask_pin);
+            assert!(!inputs.change_pin);
+        }
+        assert!(!operation_inputs(CommandKind::EnrollBio).requires_confirmation);
+    }
+
+    #[test]
+    fn entering_fingerprints_uses_current_session_and_skips_unavailable_devices() {
+        let mut state = state();
+        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state
+            .apply(command(CommandKind::EnterFingerprints, ""))
+            .unwrap();
+        assert!(state.templates.is_empty());
+        assert!(!state.snapshot().can_manage_credentials);
+        state.active.as_mut().unwrap().fingerprint = true;
+        state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".into()));
+        assert!(state.snapshot().can_manage_credentials);
+        assert!(state.snapshot().can_manage_fingerprints);
+        state
+            .apply(command(CommandKind::EnterFingerprints, ""))
+            .unwrap();
+        assert_eq!(state.templates[0].id, "t1");
+        state.disconnect();
+        state
+            .apply(command(CommandKind::EnterFingerprints, ""))
+            .unwrap();
+        assert!(state.templates.is_empty());
+        assert!(!state.snapshot().can_manage_fingerprints);
+    }
+
     #[test]
     fn selecting_device_verifies_pin_then_switches_active() {
         let mut state = state();

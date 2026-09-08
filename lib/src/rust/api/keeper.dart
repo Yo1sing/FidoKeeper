@@ -8,9 +8,12 @@ import 'models.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `active`, `apply`, `disconnect`, `new`, `snapshot`
+// These functions are ignored because they are not marked as `pub`: `active`, `apply`, `disconnect`, `new`, `scan`, `session_pin`, `snapshot`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `State`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `eq`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`
+
+OperationInputs operationInputs({required CommandKind kind}) =>
+    RustLib.instance.api.crateApiKeeperOperationInputs(kind: kind);
 
 Future<Snapshot> dispatch({required Command command}) =>
     RustLib.instance.api.crateApiKeeperDispatch(command: command);
@@ -55,6 +58,8 @@ class Command {
 }
 
 enum CommandKind {
+  initialize,
+  enterFingerprints,
   load,
   scan,
   connect,
@@ -74,7 +79,34 @@ enum CommandKind {
   shutdown,
 }
 
+class OperationInputs {
+  final bool askPin;
+  final bool changePin;
+  final bool requiresConfirmation;
+
+  const OperationInputs({
+    required this.askPin,
+    required this.changePin,
+    required this.requiresConfirmation,
+  });
+
+  @override
+  int get hashCode =>
+      askPin.hashCode ^ changePin.hashCode ^ requiresConfirmation.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OperationInputs &&
+          runtimeType == other.runtimeType &&
+          askPin == other.askPin &&
+          changePin == other.changePin &&
+          requiresConfirmation == other.requiresConfirmation;
+}
+
 class Snapshot {
+  final bool canManageCredentials;
+  final bool canManageFingerprints;
   final List<DeviceSummary> devices;
   final DeviceSummary? active;
   final List<CredentialSummary> credentials;
@@ -85,6 +117,8 @@ class Snapshot {
   final String query;
 
   const Snapshot({
+    required this.canManageCredentials,
+    required this.canManageFingerprints,
     required this.devices,
     this.active,
     required this.credentials,
@@ -97,6 +131,8 @@ class Snapshot {
 
   @override
   int get hashCode =>
+      canManageCredentials.hashCode ^
+      canManageFingerprints.hashCode ^
       devices.hashCode ^
       active.hashCode ^
       credentials.hashCode ^
@@ -111,6 +147,8 @@ class Snapshot {
       identical(this, other) ||
       other is Snapshot &&
           runtimeType == other.runtimeType &&
+          canManageCredentials == other.canManageCredentials &&
+          canManageFingerprints == other.canManageFingerprints &&
           devices == other.devices &&
           active == other.active &&
           credentials == other.credentials &&

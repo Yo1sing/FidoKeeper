@@ -15,7 +15,4 @@ typedef PromptOperation = Future<void> Function(
   String title, {
   String value,
   String? detail,
-  bool reset,
-  bool changePin,
-  bool askPin,
 });

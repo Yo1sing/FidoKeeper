@@ -37,7 +37,7 @@ class SettingsPage extends StatelessWidget {
           DropdownMenuItem(value: 'light', child: Text(tr('浅色', 'Light'))),
           DropdownMenuItem(value: 'dark', child: Text(tr('深色', 'Dark'))),
         ],
-        onChanged: busy
+        onChanged: busy || closing
             ? null
             : (value) {
                 if (value != null) {
@@ -53,7 +53,7 @@ class SettingsPage extends StatelessWidget {
           DropdownMenuItem(value: 'zh-CN', child: Text('简体中文')),
           DropdownMenuItem(value: 'en-US', child: Text('English')),
         ],
-        onChanged: busy
+        onChanged: busy || closing
             ? null
             : (value) {
                 if (value != null) {
