@@ -13,11 +13,15 @@ class AppSidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.tr,
+    this.onScanDevices,
+    this.scanEnabled = true,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final Translate tr;
+  final VoidCallback? onScanDevices;
+  final bool scanEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +95,26 @@ class AppSidebar extends StatelessWidget {
                                 label: destinations[i].$3,
                                 selected: selectedIndex == i,
                                 onTap: () => onDestinationSelected(i),
+                                trailing: i == 0 && selectedIndex == 0
+                                    ? IconButton(
+                                        tooltip: tr('重新扫描', 'Scan again'),
+                                        visualDensity: VisualDensity.compact,
+                                        iconSize: 18,
+                                        padding: EdgeInsets.zero,
+                                        constraints:
+                                            const BoxConstraints.tightFor(
+                                              width: 28,
+                                              height: 28,
+                                            ),
+                                        onPressed: scanEnabled
+                                            ? onScanDevices
+                                            : null,
+                                        icon: Icon(
+                                          Icons.refresh,
+                                          color: scheme.primary,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ],
                           ],
@@ -115,6 +139,7 @@ class _SidebarItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
@@ -122,6 +147,7 @@ class _SidebarItem extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +181,7 @@ class _SidebarItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (trailing != null) trailing!,
               ],
             ),
           ),

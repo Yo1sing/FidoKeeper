@@ -24,11 +24,6 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(24),
     children: [
-      Text(
-        tr('设置', 'Settings'),
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 16),
       DropdownButtonFormField<String>(
         initialValue: snapshot?.preferences.theme ?? 'system',
         decoration: InputDecoration(labelText: tr('主题', 'Theme')),

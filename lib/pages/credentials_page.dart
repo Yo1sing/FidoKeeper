@@ -31,11 +31,6 @@ class CredentialsPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
-          tr('凭证管理', 'Credentials'),
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 16),
         SelectedDeviceBanner(device: active, tr: tr),
         if (active != null) ...[
           const SizedBox(height: 16),

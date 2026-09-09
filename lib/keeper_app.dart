@@ -258,10 +258,13 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
                       );
                     }
                   },
+                  onScanDevices: () => _act(backend.CommandKind.scan),
+                  scanEnabled: !_busy && !_closing,
                   tr: tr,
                 ),
                 Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (_showBusyBar)
                         const LinearProgressIndicator(minHeight: 2),

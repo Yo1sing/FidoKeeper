@@ -30,11 +30,6 @@ class FingerprintsPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
-          tr('指纹管理', 'Fingerprints'),
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 16),
         SelectedDeviceBanner(device: active, tr: tr),
         if (active != null) ...[
           const SizedBox(height: 16),

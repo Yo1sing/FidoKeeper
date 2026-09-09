@@ -29,7 +29,6 @@ class DevicesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final devices = snapshot?.devices ?? const <DeviceSummary>[];
-    final theme = Theme.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 12.0;
@@ -46,77 +45,53 @@ class DevicesPage extends StatelessWidget {
 
         return Padding(
           padding: EdgeInsets.fromLTRB(padding, 20, padding, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      tr('认证器', 'Authenticators'),
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+          child: snapshot != null && devices.isEmpty
+              ? _EmptyState(tr: tr)
+              : SizedBox(
+                  width: inner,
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      alignment: WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.start,
+                      children: [
+                        for (final device in devices)
+                          SizedBox(
+                            width: cardWidth,
+                            child: _DeviceCard(
+                              device: device,
+                              connected: snapshot?.active?.path == device.path,
+                              locked: _locked,
+                              tr: tr,
+                              onConnect: () => onPrompt(
+                                context,
+                                backend.CommandKind.connect,
+                                tr('选择认证器', 'Select authenticator'),
+                                value: device.path,
+                                detail: device.label,
+                              ),
+                              onDisconnect: () =>
+                                  onAction(backend.CommandKind.disconnect),
+                              onHide: () => onAction(
+                                backend.CommandKind.hide_,
+                                value: device.path,
+                              ),
+                              onReset: () => onPrompt(
+                                context,
+                                backend.CommandKind.reset,
+                                tr('重置认证器', 'Reset authenticator'),
+                                value: device.path,
+                                detail:
+                                    '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
+                              ),
+                              onDetails: () => _showDetails(context, device),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  FilledButton.tonalIcon(
-                    onPressed: _locked
-                        ? null
-                        : () => onAction(backend.CommandKind.scan),
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text(tr('重新扫描', 'Scan again')),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: snapshot != null && devices.isEmpty
-                    ? _EmptyState(tr: tr)
-                    : SingleChildScrollView(
-                        child: Wrap(
-                          spacing: gap,
-                          runSpacing: gap,
-                          children: [
-                            for (final device in devices)
-                              SizedBox(
-                                width: cardWidth,
-                                child: _DeviceCard(
-                                  device: device,
-                                  connected:
-                                      snapshot?.active?.path == device.path,
-                                  locked: _locked,
-                                  tr: tr,
-                                  onConnect: () => onPrompt(
-                                    context,
-                                    backend.CommandKind.connect,
-                                    tr('选择认证器', 'Select authenticator'),
-                                    value: device.path,
-                                    detail: device.label,
-                                  ),
-                                  onDisconnect: () =>
-                                      onAction(backend.CommandKind.disconnect),
-                                  onHide: () => onAction(
-                                    backend.CommandKind.hide_,
-                                    value: device.path,
-                                  ),
-                                  onReset: () => onPrompt(
-                                    context,
-                                    backend.CommandKind.reset,
-                                    tr('重置认证器', 'Reset authenticator'),
-                                    value: device.path,
-                                    detail:
-                                        '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
-                                  ),
-                                  onDetails: () =>
-                                      _showDetails(context, device),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-              ),
-            ],
-          ),
+                ),
         );
       },
     );

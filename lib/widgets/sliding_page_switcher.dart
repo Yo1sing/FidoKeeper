@@ -45,12 +45,14 @@ class _SlidingPageSwitcherState extends State<SlidingPageSwitcher>
   Widget build(BuildContext context) {
     // 只绘制当前页，避免旧页淡出叠层和 Opacity 离屏缓冲。
     return ClipRect(
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(_dx, 0),
-          end: Offset.zero,
-        ).animate(_curve),
-        child: RepaintBoundary(child: widget.child),
+      child: SizedBox.expand(
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(_dx, 0),
+            end: Offset.zero,
+          ).animate(_curve),
+          child: SizedBox.expand(child: RepaintBoundary(child: widget.child)),
+        ),
       ),
     );
   }

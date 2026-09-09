@@ -389,18 +389,24 @@ void main() {
   testWidgets('独立页面可切换并展示未连接设备的提示', (tester) async {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
-    expect(find.text('重新扫描'), findsOneWidget);
+    expect(find.text('重新扫描'), findsNothing);
+    expect(find.byTooltip('重新扫描'), findsOneWidget);
+    await tester.tap(find.byTooltip('重新扫描'));
+    await tester.pumpAndSettle();
+    expect(api.dispatched.last, CommandKind.scan);
     await tester.tap(find.text('凭证'));
     await tester.pumpAndSettle();
+    expect(find.byTooltip('重新扫描'), findsNothing);
     expect(find.text('请先在认证器页面选择设备'), findsOneWidget);
     await tester.tap(find.text('指纹'));
     await tester.pumpAndSettle();
     expect(find.text('请先在认证器页面选择设备'), findsOneWidget);
-    await tester.tap(find.text('设置').first);
+    await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     expect(find.text('已隐藏的认证器'), findsOneWidget);
-    await tester.tap(find.text('认证器').first);
+    await tester.tap(find.text('认证器'));
     await tester.pumpAndSettle();
+    expect(find.byTooltip('重新扫描'), findsOneWidget);
     expect(find.text('测试认证器'), findsOneWidget);
     expect(find.text('轻触以选择并输入 PIN'), findsOneWidget);
     expect(find.text('CTAP2'), findsOneWidget);
@@ -457,7 +463,7 @@ void main() {
     expect(commands.last.kind, CommandKind.enterFingerprints);
     expect(commands.last.pin, isEmpty);
 
-    await tester.tap(find.text('设置').first);
+    await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('浅色'));
     await tester.pumpAndSettle();
