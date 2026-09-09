@@ -1,6 +1,7 @@
 #[cfg(target_os = "android")]
 mod android;
 mod ctap;
+mod enrollment;
 mod native;
 use crate::api::models::{BioTemplateSummary, CredentialSummary, DeviceSummary};
 use native::*;
@@ -23,7 +24,13 @@ pub trait Authenticator {
     fn remove_credential(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
     fn update_pin(&mut self, path: &str, current: &str, replacement: &str) -> Result<(), String>;
     fn fingerprints(&mut self, path: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String>;
-    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String>;
+    fn enroll(
+        &mut self,
+        path: &str,
+        pin: &str,
+        on_sample: &mut dyn FnMut(),
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<(), String>;
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
     fn rename_fingerprint(
         &mut self,
@@ -369,42 +376,46 @@ impl Authenticator for NativeAuthenticator {
             Ok(result)
         }
     }
-    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
+    fn enroll(
+        &mut self,
+        path: &str,
+        pin: &str,
+        on_sample: &mut dyn FnMut(),
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<(), String> {
         let pin = secret(pin)?;
         let s = Session::open(path)?;
         let api = s.api;
         unsafe {
             let template = Owned::new((api.fido_bio_template_new)(), api.fido_bio_template_free)?;
             let progress = Owned::new((api.fido_bio_enroll_new)(), api.fido_bio_enroll_free)?;
-            let result = (|| {
-                api.check((api.fido_bio_dev_enroll_begin)(
-                    s.raw(),
-                    template.raw(),
-                    progress.raw(),
-                    30_000,
-                    pin.as_ptr().cast(),
-                ))?;
-                on_sample();
-                // 限制整次录入时长，设备无进展时不无限占用操作线程。
-                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(180);
-                while (api.fido_bio_enroll_remaining_samples)(progress.raw()) > 0 {
-                    if std::time::Instant::now() >= deadline {
-                        return Err("指纹录入超时，请重试".into());
+            enrollment::run(
+                cancelled,
+                |first, wait_ms| {
+                    if first {
+                        api.check((api.fido_bio_dev_enroll_begin)(
+                            s.raw(),
+                            template.raw(),
+                            progress.raw(),
+                            wait_ms,
+                            pin.as_ptr().cast(),
+                        ))?;
+                    } else {
+                        api.check((api.fido_bio_dev_enroll_continue)(
+                            s.raw(),
+                            template.raw(),
+                            progress.raw(),
+                            wait_ms,
+                        ))?;
                     }
-                    api.check((api.fido_bio_dev_enroll_continue)(
-                        s.raw(),
-                        template.raw(),
-                        progress.raw(),
-                        30_000,
-                    ))?;
-                    on_sample();
-                }
-                Ok(())
-            })();
-            if result.is_err() {
-                (api.fido_bio_dev_enroll_cancel)(s.raw());
-            }
-            result
+                    enrollment::sample_result(
+                        (api.fido_bio_enroll_last_status)(progress.raw()),
+                        (api.fido_bio_enroll_remaining_samples)(progress.raw()),
+                        on_sample,
+                    )
+                },
+                || api.check((api.fido_bio_dev_enroll_cancel)(s.raw())),
+            )
         }
     }
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String> {

@@ -12,11 +12,13 @@ class FingerprintEnrollDialog extends StatefulWidget {
     required this.tr,
     required this.onEnroll,
     required this.samples,
+    this.onCancel,
   });
 
   final String Function(String, String) tr;
   final Future<void> Function() onEnroll;
   final int Function() samples;
+  final bool Function()? onCancel;
 
   @override
   State<FingerprintEnrollDialog> createState() =>
@@ -27,6 +29,7 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
   bool _pending = false;
   bool _finished = false;
   bool _closing = false;
+  bool _cancelling = false;
   String? _error;
   int _samples = 0;
   Timer? _poll;
@@ -53,6 +56,7 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
     _poll?.cancel();
     setState(() {
       _pending = true;
+      _cancelling = false;
       _finished = false;
       _error = null;
       _samples = 0;
@@ -69,6 +73,10 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
     } catch (failure) {
       if (!mounted) return;
       _poll?.cancel();
+      if (_cancelling && failure.toString() == '指纹录入已取消') {
+        Navigator.pop(context, false);
+        return;
+      }
       setState(() {
         _pending = false;
         _error = failure.toString();
@@ -112,7 +120,9 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
               ),
               const SizedBox(height: 20),
               Text(
-                _error == null
+                _cancelling && _pending
+                    ? widget.tr('正在取消录入，请稍候…', 'Cancelling enrollment…')
+                    : _error == null
                     ? widget.tr(
                         '请在安全密钥上按压指纹传感器，每按一次会多显出一段纹路',
                         'Press the sensor on the key. Each press reveals more of the fingerprint.',
@@ -137,6 +147,21 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
           ),
         ),
         actions: [
+          if (_pending && widget.onCancel != null)
+            TextButton(
+              onPressed: _cancelling
+                  ? null
+                  : () {
+                      try {
+                        if (widget.onCancel!()) {
+                          setState(() => _cancelling = true);
+                        }
+                      } catch (error) {
+                        setState(() => _error = error.toString());
+                      }
+                    },
+              child: Text(widget.tr('取消录入', 'Cancel enrollment')),
+            ),
           if (!_pending && _error != null) ...[
             TextButton(
               onPressed: () => Navigator.pop(context),

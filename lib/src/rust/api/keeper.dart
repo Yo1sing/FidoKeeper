@@ -17,6 +17,9 @@ OperationInputs operationInputs({required CommandKind kind}) =>
 
 int enrollCaptured() => RustLib.instance.api.crateApiKeeperEnrollCaptured();
 
+bool cancelEnrollment() =>
+    RustLib.instance.api.crateApiKeeperCancelEnrollment();
+
 Future<Snapshot> dispatch({required Command command}) =>
     RustLib.instance.api.crateApiKeeperDispatch(command: command);
 

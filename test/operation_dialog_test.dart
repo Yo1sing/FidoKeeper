@@ -6,7 +6,9 @@ import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
 import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:window_manager/window_manager.dart';
 
 class FakeApi extends Fake implements RustLibApi {
   Future<Snapshot> Function(Command)? operation;
@@ -127,6 +129,48 @@ void main() {
     RustLib.initMock(api: api);
   });
   tearDown(RustLib.dispose);
+
+  testWidgets('退出请求不等待业务队列，设备清理完成后才销毁窗口', (tester) async {
+    final initialization = Completer<Snapshot>();
+    final shutdown = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    api.operation = (command) => command.kind == CommandKind.shutdown
+        ? shutdown.future
+        : Future.value(api.snapshot);
+    var destroyed = false;
+    const channel = MethodChannel('window_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      if (call.method == 'destroy') destroyed = true;
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pump();
+    final listener = tester.state(find.byType(KeeperApp)) as WindowListener;
+    listener.onWindowClose();
+    await tester.pump();
+    expect(api.dispatched, [CommandKind.initialize, CommandKind.shutdown]);
+    expect(destroyed, isFalse);
+    listener.onWindowClose();
+    expect(
+      api.dispatched.where((kind) => kind == CommandKind.shutdown).length,
+      1,
+    );
+    initialization.complete(api.snapshot);
+    await tester.pump();
+    shutdown.complete(api.snapshot);
+    await tester.pump();
+    expect(destroyed, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
 
   Finder pinField() => find.descendant(
     of: find.byType(AlertDialog),

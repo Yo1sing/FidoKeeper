@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -26,6 +29,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       _closing || (_busy && _busyKind != backend.CommandKind.enrollBio);
   Future<void> _queue = Future<void>.value();
   bool _closing = false;
+  final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   String? _error;
   int _page = 0;
   final _search = TextEditingController();
@@ -37,7 +41,14 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   @override
   void initState() {
     super.initState();
-    if (widget.desktop) windowManager.addListener(this);
+    if (widget.desktop) {
+      windowManager.addListener(this);
+      if (Platform.isLinux) {
+        for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm]) {
+          _exitSignals.add(signal.watch().listen((_) => onWindowClose()));
+        }
+      }
+    }
     _load();
   }
 
@@ -106,7 +117,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     if (_closing) return;
     setState(() => _closing = true);
     try {
-      await _queue;
+      // 关闭必须先通知后端取消，不能排在正在等待采样的操作之后。
       await backend.dispatch(
         command: const backend.Command(
           kind: backend.CommandKind.shutdown,
@@ -130,6 +141,9 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
 
   @override
   void dispose() {
+    for (final subscription in _exitSignals) {
+      subscription.cancel();
+    }
     if (widget.desktop) windowManager.removeListener(this);
     _search.dispose();
     super.dispose();
@@ -152,6 +166,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
               tr: tr,
               onEnroll: () => _dispatch(kind, value: value),
               samples: backend.enrollCaptured,
+              onCancel: backend.cancelEnrollment,
             )
           : OperationDialog(
               title: title,

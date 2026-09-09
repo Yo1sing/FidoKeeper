@@ -57,6 +57,13 @@ pub fn enroll_captured() -> u8 {
     ENROLL_CAPTURED.load(Ordering::Relaxed)
 }
 
+#[flutter_rust_bridge::frb(sync)]
+pub fn cancel_enrollment() -> bool {
+    ENROLL_STATE
+        .compare_exchange(1, 2, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+}
+
 pub struct Command {
     pub kind: CommandKind,
     pub value: String,
@@ -359,9 +366,23 @@ impl State {
                     }
                     CommandKind::EnrollBio => {
                         ENROLL_CAPTURED.store(0, Ordering::Relaxed);
-                        self.hardware.enroll(&device.path, &pin, &mut || {
-                            ENROLL_CAPTURED.fetch_add(1, Ordering::Relaxed);
-                        })?;
+                        ENROLL_STATE.store(1, Ordering::SeqCst);
+                        let result = self.hardware.enroll(
+                            &device.path,
+                            &pin,
+                            &mut || {
+                                ENROLL_CAPTURED.fetch_add(1, Ordering::Relaxed);
+                            },
+                            &|| {
+                                SHUTTING_DOWN.load(Ordering::SeqCst)
+                                    || ENROLL_STATE.load(Ordering::SeqCst) == 2
+                            },
+                        );
+                        ENROLL_STATE.store(0, Ordering::SeqCst);
+                        result?;
+                        if SHUTTING_DOWN.load(Ordering::SeqCst) {
+                            return Err("应用正在关闭".into());
+                        }
                         self.templates = self.hardware.fingerprints(&device.path, &pin)?;
                     }
                     CommandKind::RenameBio => {
@@ -405,6 +426,9 @@ impl State {
 
 static STATE: OnceLock<Mutex<State>> = OnceLock::new();
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+// 单个原子状态防止完成后到达的取消请求污染下一次录入。
+// 0：空闲，1：录入中，2：已请求取消。
+static ENROLL_STATE: AtomicU8 = AtomicU8::new(0);
 static ENROLL_CAPTURED: AtomicU8 = AtomicU8::new(0);
 
 // 桥接在后台执行；统一串行化状态与硬件调用，避免扫描、切换和关闭互相打断。
@@ -508,7 +532,13 @@ mod tests {
                 name: "finger".to_owned(),
             }])
         }
-        fn enroll(&mut self, _: &str, _: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
+        fn enroll(
+            &mut self,
+            _: &str,
+            _: &str,
+            on_sample: &mut dyn FnMut(),
+            _cancelled: &dyn Fn() -> bool,
+        ) -> Result<(), String> {
             on_sample();
             on_sample();
             on_sample();

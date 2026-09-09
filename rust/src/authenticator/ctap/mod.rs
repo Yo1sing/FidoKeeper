@@ -266,27 +266,33 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         Ok(result)
     }
 
-    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
+    fn enroll(
+        &mut self,
+        path: &str,
+        pin: &str,
+        on_sample: &mut dyn FnMut(),
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<(), String> {
+        super::enrollment::check_cancelled(cancelled)?;
         let mut session = self.session(path)?;
         let token = session.pin_token(pin, PIN_PERM_BIO)?;
         let proto = session.protocol()?;
         let result = (|| {
+            super::enrollment::check_cancelled(cancelled)?;
             let begin = session.bio(
                 0x01,
                 Some(cbor::map(vec![(
                     cbor::integer(0x03),
-                    cbor::integer(30_000),
+                    cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
                 )])),
                 Some((&proto, &token)),
             )?;
-            require_good_sample(&begin)?;
-            on_sample();
-            let mut remaining = cbor::as_u8(cbor::map_get(&begin, 0x06).ok_or("缺少剩余次数")?)
-                .ok_or("剩余次数无效")?;
+            let mut pending = capture_result(&begin, on_sample)?;
             let template = cbor::as_bytes(cbor::map_get(&begin, 0x04).ok_or("缺少指纹标识")?)
                 .ok_or("指纹标识无效")?;
             let deadline = Instant::now() + Duration::from_secs(180);
-            while remaining > 0 {
+            while pending {
+                super::enrollment::check_cancelled(cancelled)?;
                 if Instant::now() >= deadline {
                     return Err("指纹录入超时，请重试".into());
                 }
@@ -294,21 +300,20 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
                     0x02,
                     Some(cbor::map(vec![
                         (cbor::integer(0x01), cbor::bytes(template.clone())),
-                        (cbor::integer(0x03), cbor::integer(30_000)),
+                        (
+                            cbor::integer(0x03),
+                            cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
+                        ),
                     ])),
                     Some((&proto, &token)),
                 )?;
-                require_good_sample(&next)?;
-                on_sample();
-                remaining = cbor::as_u8(cbor::map_get(&next, 0x06).ok_or("缺少剩余次数")?)
-                    .ok_or("剩余次数无效")?;
+                pending = capture_result(&next, on_sample)?;
             }
             Ok(())
         })();
-        if result.is_err() {
-            let _ = session.bio(0x03, None, None);
-        }
-        result
+        super::enrollment::finish(result, cancelled, || {
+            session.bio(0x03, None, None).map(|_| ())
+        })
     }
 
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String> {
@@ -630,11 +635,14 @@ fn cred_record(value: &Value) -> Result<CredRecord, String> {
     })
 }
 
-fn require_good_sample(value: &Value) -> Result<(), String> {
-    match cbor::as_u8(cbor::map_get(value, 0x05).unwrap_or(&cbor::integer(0))).unwrap_or(0) {
-        0 => Ok(()),
-        _ => Err("指纹采集失败，请按提示重试".into()),
-    }
+fn capture_result(value: &Value, on_sample: &mut dyn FnMut()) -> Result<bool, String> {
+    let status = cbor::map_get(value, 0x05)
+        .and_then(cbor::as_u8)
+        .ok_or("缺少采样状态")?;
+    let remaining = cbor::map_get(value, 0x06)
+        .and_then(cbor::as_u8)
+        .ok_or("缺少剩余次数")?;
+    super::enrollment::sample_result(status, remaining, on_sample)
 }
 
 fn cbor_entries(entries: Vec<(i64, Value)>) -> Vec<(Value, Value)> {
