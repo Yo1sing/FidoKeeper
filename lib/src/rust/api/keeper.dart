@@ -15,6 +15,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 OperationInputs operationInputs({required CommandKind kind}) =>
     RustLib.instance.api.crateApiKeeperOperationInputs(kind: kind);
 
+int enrollCaptured() => RustLib.instance.api.crateApiKeeperEnrollCaptured();
+
 Future<Snapshot> dispatch({required Command command}) =>
     RustLib.instance.api.crateApiKeeperDispatch(command: command);
 

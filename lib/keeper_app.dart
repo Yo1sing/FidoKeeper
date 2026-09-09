@@ -7,6 +7,7 @@ import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/desktop_title_bar.dart';
+import 'widgets/fingerprint_enroll_dialog.dart';
 import 'widgets/operation_dialog.dart';
 
 class KeeperApp extends StatefulWidget {
@@ -19,7 +20,10 @@ class KeeperApp extends StatefulWidget {
 class _KeeperAppState extends State<KeeperApp> with WindowListener {
   backend.Snapshot? _state;
   int _pending = 0;
+  backend.CommandKind? _busyKind;
   bool get _busy => _pending > 0;
+  bool get _showBusyBar =>
+      _closing || (_busy && _busyKind != backend.CommandKind.enrollBio);
   Future<void> _queue = Future<void>.value();
   bool _closing = false;
   String? _error;
@@ -55,6 +59,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     }
     setState(() {
       _pending++;
+      _busyKind = kind;
       _error = null;
     });
     try {
@@ -74,7 +79,12 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       final state = await request;
       if (mounted) setState(() => _state = state);
     } finally {
-      if (mounted) setState(() => _pending--);
+      if (mounted) {
+        setState(() {
+          _pending--;
+          if (_pending == 0) _busyKind = null;
+        });
+      }
     }
   }
 
@@ -137,21 +147,27 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     final completed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => OperationDialog(
-        title: title,
-        detail: detail,
-        changePin: inputs.changePin,
-        askPin: inputs.askPin,
-        tr: tr,
-        onSubmit: (pin, newPin, confirmPin) => _dispatch(
-          kind,
-          value: value,
-          pin: pin,
-          newPin: newPin,
-          confirmPin: confirmPin,
-          confirmed: inputs.requiresConfirmation,
-        ),
-      ),
+      builder: (_) => kind == backend.CommandKind.enrollBio
+          ? FingerprintEnrollDialog(
+              tr: tr,
+              onEnroll: () => _dispatch(kind, value: value),
+              samples: backend.enrollCaptured,
+            )
+          : OperationDialog(
+              title: title,
+              detail: detail,
+              changePin: inputs.changePin,
+              askPin: inputs.askPin,
+              tr: tr,
+              onSubmit: (pin, newPin, confirmPin) => _dispatch(
+                kind,
+                value: value,
+                pin: pin,
+                newPin: newPin,
+                confirmPin: confirmPin,
+                confirmed: inputs.requiresConfirmation,
+              ),
+            ),
     );
     if (!mounted || completed != true) return;
     _messenger.currentState?.showSnackBar(
@@ -222,8 +238,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
             Expanded(
               child: Column(
                 children: [
-                  if (_busy || _closing)
-                    const LinearProgressIndicator(minHeight: 2),
+                  if (_showBusyBar) const LinearProgressIndicator(minHeight: 2),
                   if (_error != null)
                     MaterialBanner(
                       content: Text(_error!),

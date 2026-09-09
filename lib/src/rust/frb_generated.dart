@@ -86,6 +86,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiSimpleInitApp();
 
+  int crateApiKeeperEnrollCaptured();
+
   OperationInputs crateApiKeeperOperationInputs({required CommandKind kind});
 
   Future<Preferences> crateApiModelsPreferencesDefault();
@@ -153,6 +155,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiSimpleInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
+
+  @override
+  int crateApiKeeperEnrollCaptured() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_8,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperEnrollCapturedConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperEnrollCapturedConstMeta =>
+      const TaskConstMeta(debugName: "enroll_captured", argNames: []);
 
   @override
   OperationInputs crateApiKeeperOperationInputs({required CommandKind kind}) {

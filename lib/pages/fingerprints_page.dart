@@ -53,10 +53,6 @@ class FingerprintsPage extends StatelessWidget {
                 context,
                 backend.CommandKind.enrollBio,
                 tr('录入指纹', 'Enroll fingerprint'),
-                detail: tr(
-                  '提交后请在设备上重复采样。',
-                  'Touch the sensor repeatedly when prompted.',
-                ),
               ),
             ),
             for (final template in snapshot!.templates)

@@ -4,7 +4,7 @@ use crate::api::models::{
 use crate::authenticator::{platform_authenticator, Authenticator, Inventory};
 use crate::preferences;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU8, Ordering},
     Mutex, OnceLock,
 };
 
@@ -50,6 +50,11 @@ pub fn operation_inputs(kind: CommandKind) -> OperationInputs {
             CommandKind::Reset | CommandKind::DeleteCredential | CommandKind::DeleteBio
         ),
     }
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn enroll_captured() -> u8 {
+    ENROLL_CAPTURED.load(Ordering::Relaxed)
 }
 
 pub struct Command {
@@ -353,7 +358,10 @@ impl State {
                         self.templates = self.hardware.fingerprints(&device.path, &pin)?
                     }
                     CommandKind::EnrollBio => {
-                        self.hardware.enroll(&device.path, &pin)?;
+                        ENROLL_CAPTURED.store(0, Ordering::Relaxed);
+                        self.hardware.enroll(&device.path, &pin, &mut || {
+                            ENROLL_CAPTURED.fetch_add(1, Ordering::Relaxed);
+                        })?;
                         self.templates = self.hardware.fingerprints(&device.path, &pin)?;
                     }
                     CommandKind::RenameBio => {
@@ -397,6 +405,7 @@ impl State {
 
 static STATE: OnceLock<Mutex<State>> = OnceLock::new();
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+static ENROLL_CAPTURED: AtomicU8 = AtomicU8::new(0);
 
 // 桥接在后台执行；统一串行化状态与硬件调用，避免扫描、切换和关闭互相打断。
 pub fn dispatch(command: Command) -> Result<Snapshot, String> {
@@ -499,7 +508,10 @@ mod tests {
                 name: "finger".to_owned(),
             }])
         }
-        fn enroll(&mut self, _: &str, _: &str) -> Result<(), String> {
+        fn enroll(&mut self, _: &str, _: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
+            on_sample();
+            on_sample();
+            on_sample();
             Ok(())
         }
         fn remove_fingerprint(&mut self, _: &str, _: &str, _: &str) -> Result<(), String> {
@@ -614,6 +626,19 @@ mod tests {
             state.apply(empty).unwrap_err(),
             "指纹名称不能为空、不能包含空字符，且最多 64 字节"
         );
+    }
+    #[test]
+    fn enrolling_fingerprint_counts_each_sample() {
+        let mut state = state();
+        let mut bio = device("one");
+        bio.fingerprint = true;
+        state.devices[0] = bio.clone();
+        state.active = Some(bio);
+        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
+        state.apply(command(CommandKind::EnrollBio, "")).unwrap();
+        assert_eq!(enroll_captured(), 3);
+        assert_eq!(state.templates[0].id, "t1");
     }
     #[test]
     fn rejected_device_commands_preserve_inventory_and_binding() {

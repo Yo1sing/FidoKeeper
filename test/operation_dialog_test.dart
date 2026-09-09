@@ -4,6 +4,7 @@ import 'package:fidokeeper/keeper_app.dart';
 import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
+import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,6 +13,7 @@ class FakeApi extends Fake implements RustLibApi {
   Future<Snapshot> Function()? initialize;
   final dispatched = <CommandKind>[];
   Command? last;
+  var captured = 0;
   var snapshot = Snapshot(
     canManageCredentials: true,
     canManageFingerprints: false,
@@ -62,6 +64,9 @@ class FakeApi extends Fake implements RustLibApi {
           CommandKind.deleteBio,
         ].contains(kind),
       );
+
+  @override
+  int crateApiKeeperEnrollCaptured() => captured;
 
   @override
   Future<Snapshot> crateApiKeeperDispatch({required Command command}) async {
@@ -483,6 +488,73 @@ void main() {
     expect(api.last!.newPin, '右手食指');
     expect(find.text('右手食指'), findsOneWidget);
     expect(find.text('finger'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('录入指纹显示采样动画而不是进度条', (tester) async {
+    const device = DeviceSummary(
+      transport: Transport.usb,
+      label: 'USB 密钥',
+      path: 'bio-device',
+      protocol: 'CTAP2',
+      credentialManagement: true,
+      pin: true,
+      fingerprint: true,
+    );
+    api.snapshot = Snapshot(
+      canManageCredentials: true,
+      canManageFingerprints: true,
+      devices: const [device],
+      active: device,
+      credentials: const [],
+      existing: BigInt.zero,
+      remaining: BigInt.zero,
+      templates: const [],
+      preferences: api.snapshot.preferences,
+      query: '',
+    );
+    final result = Completer<Snapshot>();
+    api.operation = (command) {
+      if (command.kind == CommandKind.enrollBio) return result.future;
+      return Future.value(api.snapshot);
+    };
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('指纹'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('录入指纹'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(FingerprintEnrollAnimation), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(
+      tester
+          .widget<FingerprintEnrollAnimation>(
+            find.byType(FingerprintEnrollAnimation),
+          )
+          .samples,
+      0,
+    );
+    expect(find.textContaining('每按一次会多显出一段纹路'), findsOneWidget);
+    api.captured = 2;
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      tester
+          .widget<FingerprintEnrollAnimation>(
+            find.byType(FingerprintEnrollAnimation),
+          )
+          .samples,
+      2,
+    );
+    result.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('操作成功'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

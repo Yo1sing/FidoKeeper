@@ -23,7 +23,7 @@ pub trait Authenticator {
     fn remove_credential(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
     fn update_pin(&mut self, path: &str, current: &str, replacement: &str) -> Result<(), String>;
     fn fingerprints(&mut self, path: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String>;
-    fn enroll(&mut self, path: &str, pin: &str) -> Result<(), String>;
+    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String>;
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
     fn rename_fingerprint(
         &mut self,
@@ -369,7 +369,7 @@ impl Authenticator for NativeAuthenticator {
             Ok(result)
         }
     }
-    fn enroll(&mut self, path: &str, pin: &str) -> Result<(), String> {
+    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
         let pin = secret(pin)?;
         let s = Session::open(path)?;
         let api = s.api;
@@ -384,6 +384,7 @@ impl Authenticator for NativeAuthenticator {
                     30_000,
                     pin.as_ptr().cast(),
                 ))?;
+                on_sample();
                 // 限制整次录入时长，设备无进展时不无限占用操作线程。
                 let deadline = std::time::Instant::now() + std::time::Duration::from_secs(180);
                 while (api.fido_bio_enroll_remaining_samples)(progress.raw()) > 0 {
@@ -396,6 +397,7 @@ impl Authenticator for NativeAuthenticator {
                         progress.raw(),
                         30_000,
                     ))?;
+                    on_sample();
                 }
                 Ok(())
             })();

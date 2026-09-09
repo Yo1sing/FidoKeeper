@@ -266,7 +266,7 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         Ok(result)
     }
 
-    fn enroll(&mut self, path: &str, pin: &str) -> Result<(), String> {
+    fn enroll(&mut self, path: &str, pin: &str, on_sample: &mut dyn FnMut()) -> Result<(), String> {
         let mut session = self.session(path)?;
         let token = session.pin_token(pin, PIN_PERM_BIO)?;
         let proto = session.protocol()?;
@@ -280,6 +280,7 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
                 Some((&proto, &token)),
             )?;
             require_good_sample(&begin)?;
+            on_sample();
             let mut remaining = cbor::as_u8(cbor::map_get(&begin, 0x06).ok_or("缺少剩余次数")?)
                 .ok_or("剩余次数无效")?;
             let template = cbor::as_bytes(cbor::map_get(&begin, 0x04).ok_or("缺少指纹标识")?)
@@ -298,6 +299,7 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
                     Some((&proto, &token)),
                 )?;
                 require_good_sample(&next)?;
+                on_sample();
                 remaining = cbor::as_u8(cbor::map_get(&next, 0x06).ok_or("缺少剩余次数")?)
                     .ok_or("剩余次数无效")?;
             }
