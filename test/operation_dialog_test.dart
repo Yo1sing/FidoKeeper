@@ -250,6 +250,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(pinField(), findsNWidgets(2));
     expect(find.text('设备 PIN'), findsNothing);
+    for (final field in tester.widgetList<TextField>(pinField())) {
+      expect(field.obscureText, isTrue);
+      expect(field.keyboardType, TextInputType.visiblePassword);
+    }
     await tester.enterText(pinField().at(0), '5678');
     await tester.enterText(pinField().at(1), '5678');
     Command? submitted;
@@ -295,7 +299,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('测试认证器'));
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(pinField()).controller!.text, isEmpty);
+    final pin = tester.widget<TextField>(pinField());
+    expect(pin.controller!.text, isEmpty);
+    expect(pin.obscureText, isTrue);
+    expect(pin.keyboardType, TextInputType.visiblePassword);
     expect(tester.takeException(), isNull);
   });
 

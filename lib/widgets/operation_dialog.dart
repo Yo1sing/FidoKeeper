@@ -84,41 +84,23 @@ class _OperationDialogState extends State<OperationDialog> {
                     child: Text(widget.detail!),
                   ),
                 if (widget.askPin)
-                  TextField(
+                  _pinField(
                     controller: _pin,
+                    label: widget.tr('设备 PIN', 'Device PIN'),
                     autofocus: true,
-                    obscureText: true,
-                    enabled: !_pending,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: widget.tr('设备 PIN', 'Device PIN'),
-                    ),
                     onSubmitted: (_) {
                       if (!widget.changePin) _submit();
                     },
                   ),
                 if (widget.changePin) ...[
-                  TextField(
+                  _pinField(
                     controller: _newPin,
-                    obscureText: true,
-                    enabled: !_pending,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: widget.tr('新 PIN', 'New PIN'),
-                    ),
+                    label: widget.tr('新 PIN', 'New PIN'),
                     autofocus: !widget.askPin,
                   ),
-                  TextField(
+                  _pinField(
                     controller: _confirm,
-                    obscureText: true,
-                    enabled: !_pending,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: widget.tr('确认新 PIN', 'Confirm new PIN'),
-                    ),
+                    label: widget.tr('确认新 PIN', 'Confirm new PIN'),
                     onSubmitted: (_) => _submit(),
                   ),
                 ],
@@ -157,6 +139,31 @@ class _OperationDialogState extends State<OperationDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  // PIN 按密码框收集，避免输入法按普通文本展示或记住内容。
+  TextField _pinField({
+    required TextEditingController controller,
+    required String label,
+    bool autofocus = false,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    return TextField(
+      controller: controller,
+      autofocus: autofocus,
+      obscureText: true,
+      keyboardType: TextInputType.visiblePassword,
+      autofillHints: const [AutofillHints.password],
+      enabled: !_pending,
+      autocorrect: false,
+      enableSuggestions: false,
+      enableIMEPersonalizedLearning: false,
+      smartDashesType: SmartDashesType.disabled,
+      smartQuotesType: SmartQuotesType.disabled,
+      spellCheckConfiguration: const SpellCheckConfiguration.disabled(),
+      decoration: InputDecoration(labelText: label),
+      onSubmitted: onSubmitted,
     );
   }
 }
