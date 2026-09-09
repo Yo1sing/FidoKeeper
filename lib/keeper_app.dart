@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/rust/api/keeper.dart' as backend;
@@ -203,6 +204,85 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     );
   }
 
+  void _selectPage(int index) {
+    setState(() => _page = index);
+    // 移动端无独立刷新按钮，点「认证器」即扫描。
+    if (!widget.desktop && index == 0 && !_busy && !_closing) {
+      _act(backend.CommandKind.scan);
+    }
+    if (index == 2) {
+      _act(backend.CommandKind.enterFingerprints, enqueue: true);
+    }
+  }
+
+  Widget _contentColumn(BuildContext context, {bool padForBottomNav = false}) {
+    Widget pages = SlidingPageSwitcher(
+      index: _page,
+      child: switch (_page) {
+        0 => DevicesPage(
+          snapshot: _state,
+          busy: _busy,
+          closing: _closing,
+          tr: tr,
+          onAction: _act,
+          onPrompt: _prompt,
+        ),
+        1 => CredentialsPage(
+          snapshot: _state,
+          busy: _busy,
+          closing: _closing,
+          tr: tr,
+          onAction: _act,
+          onPrompt: _prompt,
+          searchController: _search,
+        ),
+        2 => FingerprintsPage(
+          snapshot: _state,
+          busy: _busy,
+          closing: _closing,
+          tr: tr,
+          onAction: _act,
+          onPrompt: _prompt,
+        ),
+        _ => SettingsPage(
+          snapshot: _state,
+          busy: _busy,
+          closing: _closing,
+          tr: tr,
+          onAction: _act,
+        ),
+      },
+    );
+    if (padForBottomNav) {
+      final mq = MediaQuery.of(context);
+      pages = MediaQuery(
+        data: mq.copyWith(
+          padding: mq.padding.copyWith(
+            bottom: mq.padding.bottom + bottomNavOverlayExtent,
+          ),
+        ),
+        child: pages,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_showBusyBar) const LinearProgressIndicator(minHeight: 2),
+        if (_error != null)
+          MaterialBanner(
+            content: Text(_error!),
+            actions: [
+              TextButton(
+                onPressed: () => setState(() => _error = null),
+                child: Text(tr('关闭', 'Dismiss')),
+              ),
+            ],
+          ),
+        Expanded(child: pages),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'FidoKeeper',
@@ -222,105 +302,61 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     home: Builder(
       builder: (context) {
         final scheme = Theme.of(context).colorScheme;
-        return Scaffold(
-          backgroundColor: scheme.surface,
-          appBar: widget.desktop
-              ? const DesktopTitleBar()
-              : AppBar(title: const Text('FidoKeeper')),
-          body: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  scheme.surface,
-                  Color.alphaBlend(
-                    scheme.primary.withValues(alpha: 0.08),
+        final compact = !widget.desktop;
+        final nav = AppSidebar(
+          selectedIndex: _page,
+          bottom: compact,
+          onDestinationSelected: _selectPage,
+          onScanDevices: () => _act(backend.CommandKind.scan),
+          scanEnabled: !_busy && !_closing,
+          tr: tr,
+        );
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+            systemNavigationBarIconBrightness:
+                scheme.brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
+          ),
+          child: Scaffold(
+            backgroundColor: scheme.surface,
+            extendBody: compact,
+            appBar: widget.desktop
+                ? const DesktopTitleBar()
+                : AppBar(title: const Text('FidoKeeper')),
+            bottomNavigationBar: compact
+                ? Material(color: Colors.transparent, child: nav)
+                : null,
+            body: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
                     scheme.surface,
-                  ),
-                  Color.alphaBlend(
-                    scheme.tertiary.withValues(alpha: 0.12),
-                    scheme.surfaceContainerLow,
-                  ),
-                ],
+                    Color.alphaBlend(
+                      scheme.primary.withValues(alpha: 0.08),
+                      scheme.surface,
+                    ),
+                    Color.alphaBlend(
+                      scheme.tertiary.withValues(alpha: 0.12),
+                      scheme.surfaceContainerLow,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                AppSidebar(
-                  selectedIndex: _page,
-                  onDestinationSelected: (index) {
-                    setState(() => _page = index);
-                    if (index == 2) {
-                      _act(
-                        backend.CommandKind.enterFingerprints,
-                        enqueue: true,
-                      );
-                    }
-                  },
-                  onScanDevices: () => _act(backend.CommandKind.scan),
-                  scanEnabled: !_busy && !_closing,
-                  tr: tr,
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (_showBusyBar)
-                        const LinearProgressIndicator(minHeight: 2),
-                      if (_error != null)
-                        MaterialBanner(
-                          content: Text(_error!),
-                          actions: [
-                            TextButton(
-                              onPressed: () => setState(() => _error = null),
-                              child: Text(tr('关闭', 'Dismiss')),
-                            ),
-                          ],
-                        ),
-                      Expanded(
-                        child: SlidingPageSwitcher(
-                          index: _page,
-                          child: switch (_page) {
-                            0 => DevicesPage(
-                              snapshot: _state,
-                              busy: _busy,
-                              closing: _closing,
-                              tr: tr,
-                              onAction: _act,
-                              onPrompt: _prompt,
-                            ),
-                            1 => CredentialsPage(
-                              snapshot: _state,
-                              busy: _busy,
-                              closing: _closing,
-                              tr: tr,
-                              onAction: _act,
-                              onPrompt: _prompt,
-                              searchController: _search,
-                            ),
-                            2 => FingerprintsPage(
-                              snapshot: _state,
-                              busy: _busy,
-                              closing: _closing,
-                              tr: tr,
-                              onAction: _act,
-                              onPrompt: _prompt,
-                            ),
-                            _ => SettingsPage(
-                              snapshot: _state,
-                              busy: _busy,
-                              closing: _closing,
-                              tr: tr,
-                              onAction: _act,
-                            ),
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              child: compact
+                  ? _contentColumn(context, padForBottomNav: true)
+                  : Row(
+                      children: [
+                        nav,
+                        Expanded(child: _contentColumn(context)),
+                      ],
+                    ),
             ),
           ),
         );

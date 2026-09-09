@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../src/rust/api/keeper.dart' as backend;
+import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
-import '../widgets/action_button.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -58,13 +58,28 @@ class SettingsPage extends StatelessWidget {
       ),
       const SizedBox(height: 24),
       Text(tr('已隐藏的认证器', 'Hidden authenticators')),
-      for (final device in snapshot?.preferences.hiddenAuthenticators ?? [])
-        ListTile(
-          title: Text(device.label),
-          trailing: actionButton(
-            disabled: busy || closing,
-            tr('恢复显示', 'Show again'),
-            () => onAction(backend.CommandKind.unhide, value: device.path),
+      for (final device
+          in snapshot?.preferences.hiddenAuthenticators ??
+              const <HiddenAuthenticator>[])
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 0,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              Text(device.label),
+              TextButton(
+                onPressed: busy || closing
+                    ? null
+                    : () => onAction(
+                        backend.CommandKind.unhide,
+                        value: device.path,
+                      ),
+                child: Text(tr('恢复显示', 'Show again')),
+              ),
+            ],
           ),
         ),
     ],

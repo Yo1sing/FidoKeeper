@@ -390,8 +390,8 @@ void main() {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     expect(find.text('重新扫描'), findsNothing);
-    expect(find.byTooltip('重新扫描'), findsOneWidget);
-    await tester.tap(find.byTooltip('重新扫描'));
+    expect(find.byTooltip('重新扫描'), findsNothing);
+    await tester.tap(find.text('认证器'));
     await tester.pumpAndSettle();
     expect(api.dispatched.last, CommandKind.scan);
     await tester.tap(find.text('凭证'));
@@ -406,7 +406,8 @@ void main() {
     expect(find.text('已隐藏的认证器'), findsOneWidget);
     await tester.tap(find.text('认证器'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('重新扫描'), findsOneWidget);
+    expect(api.dispatched.last, CommandKind.scan);
+    expect(find.byTooltip('重新扫描'), findsNothing);
     expect(find.text('测试认证器'), findsOneWidget);
     expect(find.text('轻触以选择并输入 PIN'), findsOneWidget);
     expect(find.text('CTAP2'), findsOneWidget);
@@ -415,6 +416,42 @@ void main() {
     expect(find.byType(VerticalDivider), findsNothing);
     expect(find.text('凭证管理'), findsOneWidget);
     expect(find.text('本机 HID'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('窄屏隐藏设备后设置页可恢复显示', (tester) async {
+    tester.view.physicalSize = const Size(200, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final original = api.snapshot;
+    api.snapshot = Snapshot(
+      canManageCredentials: original.canManageCredentials,
+      canManageFingerprints: original.canManageFingerprints,
+      devices: const [],
+      credentials: original.credentials,
+      existing: original.existing,
+      remaining: original.remaining,
+      templates: original.templates,
+      preferences: const Preferences(
+        locale: 'zh-CN',
+        theme: 'light',
+        hiddenAuthenticators: [
+          HiddenAuthenticator(path: 'test-device', label: '测试认证器'),
+        ],
+      ),
+      query: original.query,
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    expect(find.text('已隐藏的认证器'), findsOneWidget);
+    expect(find.text('测试认证器'), findsOneWidget);
+    expect(find.text('恢复显示'), findsOneWidget);
+    await tester.tap(find.text('恢复显示'));
+    await tester.pumpAndSettle();
+    expect(api.dispatched.last, CommandKind.unhide);
     expect(tester.takeException(), isNull);
   });
 
