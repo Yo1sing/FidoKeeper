@@ -4,6 +4,7 @@ import 'package:fidokeeper/keeper_app.dart';
 import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
+import 'package:fidokeeper/widgets/app_sidebar.dart';
 import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -402,6 +403,8 @@ void main() {
     expect(find.text('轻触以选择并输入 PIN'), findsOneWidget);
     expect(find.text('CTAP2'), findsOneWidget);
     expect(find.text('PIN'), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(VerticalDivider), findsNothing);
     expect(find.text('凭证管理'), findsOneWidget);
     expect(find.text('本机 HID'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -582,10 +585,7 @@ void main() {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationRail),
-        matching: find.text('指纹'),
-      ),
+      find.descendant(of: find.byType(AppSidebar), matching: find.text('指纹')),
     );
     await tester.pumpAndSettle();
     expect(find.text('finger'), findsOneWidget);
@@ -638,10 +638,7 @@ void main() {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationRail),
-        matching: find.text('指纹'),
-      ),
+      find.descendant(of: find.byType(AppSidebar), matching: find.text('指纹')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('录入指纹'));

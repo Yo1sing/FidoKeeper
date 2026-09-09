@@ -10,9 +10,11 @@ import 'pages/devices_page.dart';
 import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
 import 'pages/settings_page.dart';
+import 'widgets/app_sidebar.dart';
 import 'widgets/desktop_title_bar.dart';
 import 'widgets/fingerprint_enroll_dialog.dart';
 import 'widgets/operation_dialog.dart';
+import 'widgets/sliding_page_switcher.dart';
 
 class KeeperApp extends StatefulWidget {
   const KeeperApp({super.key, this.desktop = true, this.preferences});
@@ -218,101 +220,108 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     themeMode: _themeMode,
     builder: widget.desktop ? VirtualWindowFrameInit() : null,
     home: Builder(
-      builder: (context) => Scaffold(
-        appBar: widget.desktop
-            ? const DesktopTitleBar()
-            : AppBar(title: const Text('FidoKeeper')),
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: _page,
-              onDestinationSelected: (index) {
-                setState(() => _page = index);
-                if (index == 2) {
-                  _act(backend.CommandKind.enterFingerprints, enqueue: true);
-                }
-              },
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                NavigationRailDestination(
-                  icon: const Icon(Icons.key_outlined),
-                  selectedIcon: const Icon(Icons.key),
-                  label: Text(tr('认证器', 'Devices')),
-                ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.password_outlined),
-                  selectedIcon: const Icon(Icons.password),
-                  label: Text(tr('凭证', 'Credentials')),
-                ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.fingerprint_outlined),
-                  selectedIcon: const Icon(Icons.fingerprint),
-                  label: Text(tr('指纹', 'Fingerprints')),
-                ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.settings_outlined),
-                  selectedIcon: const Icon(Icons.settings),
-                  label: Text(tr('设置', 'Settings')),
-                ),
-              ],
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: Column(
-                children: [
-                  if (_showBusyBar) const LinearProgressIndicator(minHeight: 2),
-                  if (_error != null)
-                    MaterialBanner(
-                      content: Text(_error!),
-                      actions: [
-                        TextButton(
-                          onPressed: () => setState(() => _error = null),
-                          child: Text(tr('关闭', 'Dismiss')),
-                        ),
-                      ],
-                    ),
-                  Expanded(
-                    child: switch (_page) {
-                      0 => DevicesPage(
-                        snapshot: _state,
-                        busy: _busy,
-                        closing: _closing,
-                        tr: tr,
-                        onAction: _act,
-                        onPrompt: _prompt,
-                      ),
-                      1 => CredentialsPage(
-                        snapshot: _state,
-                        busy: _busy,
-                        closing: _closing,
-                        tr: tr,
-                        onAction: _act,
-                        onPrompt: _prompt,
-                        searchController: _search,
-                      ),
-                      2 => FingerprintsPage(
-                        snapshot: _state,
-                        busy: _busy,
-                        closing: _closing,
-                        tr: tr,
-                        onAction: _act,
-                        onPrompt: _prompt,
-                      ),
-                      _ => SettingsPage(
-                        snapshot: _state,
-                        busy: _busy,
-                        closing: _closing,
-                        tr: tr,
-                        onAction: _act,
-                      ),
-                    },
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return Scaffold(
+          backgroundColor: scheme.surface,
+          appBar: widget.desktop
+              ? const DesktopTitleBar()
+              : AppBar(title: const Text('FidoKeeper')),
+          body: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  scheme.surface,
+                  Color.alphaBlend(
+                    scheme.primary.withValues(alpha: 0.08),
+                    scheme.surface,
+                  ),
+                  Color.alphaBlend(
+                    scheme.tertiary.withValues(alpha: 0.12),
+                    scheme.surfaceContainerLow,
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+            child: Row(
+              children: [
+                AppSidebar(
+                  selectedIndex: _page,
+                  onDestinationSelected: (index) {
+                    setState(() => _page = index);
+                    if (index == 2) {
+                      _act(
+                        backend.CommandKind.enterFingerprints,
+                        enqueue: true,
+                      );
+                    }
+                  },
+                  tr: tr,
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (_showBusyBar)
+                        const LinearProgressIndicator(minHeight: 2),
+                      if (_error != null)
+                        MaterialBanner(
+                          content: Text(_error!),
+                          actions: [
+                            TextButton(
+                              onPressed: () => setState(() => _error = null),
+                              child: Text(tr('关闭', 'Dismiss')),
+                            ),
+                          ],
+                        ),
+                      Expanded(
+                        child: SlidingPageSwitcher(
+                          index: _page,
+                          child: switch (_page) {
+                            0 => DevicesPage(
+                              snapshot: _state,
+                              busy: _busy,
+                              closing: _closing,
+                              tr: tr,
+                              onAction: _act,
+                              onPrompt: _prompt,
+                            ),
+                            1 => CredentialsPage(
+                              snapshot: _state,
+                              busy: _busy,
+                              closing: _closing,
+                              tr: tr,
+                              onAction: _act,
+                              onPrompt: _prompt,
+                              searchController: _search,
+                            ),
+                            2 => FingerprintsPage(
+                              snapshot: _state,
+                              busy: _busy,
+                              closing: _closing,
+                              tr: tr,
+                              onAction: _act,
+                              onPrompt: _prompt,
+                            ),
+                            _ => SettingsPage(
+                              snapshot: _state,
+                              busy: _busy,
+                              closing: _closing,
+                              tr: tr,
+                              onAction: _act,
+                            ),
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     ),
   );
 }
