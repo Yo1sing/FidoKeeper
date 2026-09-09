@@ -315,6 +315,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('验证中隐藏 PIN 并显示转圈', (tester) async {
+    final result = Completer<Snapshot>();
+    api.operation = (_) => result.future;
+    await open(tester);
+    await tester.tap(find.text('确认'));
+    await tester.pump();
+    expect(pinField(), findsNothing);
+    expect(find.text('设备 PIN'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('测试认证器'),
+      ),
+      findsNothing,
+    );
+    expect(find.text('取消'), findsNothing);
+    expect(find.text('确认'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(LinearProgressIndicator),
+      ),
+      findsNothing,
+    );
+    expect(find.textContaining('正在与认证器通信'), findsOneWidget);
+    result.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
   testWidgets('失败保持弹窗并清空 PIN，重试成功后安全关闭', (tester) async {
     var attempts = 0;
     api.operation = (_) async {

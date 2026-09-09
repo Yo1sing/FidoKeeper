@@ -78,66 +78,81 @@ class _OperationDialogState extends State<OperationDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.detail != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(widget.detail!),
-                  ),
-                if (widget.askPin)
-                  _pinField(
-                    controller: _pin,
-                    label: widget.tr('设备 PIN', 'Device PIN'),
-                    autofocus: true,
-                    onSubmitted: (_) {
-                      if (!widget.changePin) _submit();
-                    },
-                  ),
-                if (widget.changePin) ...[
-                  _pinField(
-                    controller: _newPin,
-                    label: widget.tr('新 PIN', 'New PIN'),
-                    autofocus: !widget.askPin,
-                  ),
-                  _pinField(
-                    controller: _confirm,
-                    label: widget.tr('确认新 PIN', 'Confirm new PIN'),
-                    onSubmitted: (_) => _submit(),
-                  ),
-                ],
-                if (_pending) ...[
-                  const SizedBox(height: 20),
-                  const LinearProgressIndicator(),
-                  Text(
-                    widget.tr(
-                      '正在与认证器通信，请按设备提示触碰或采样…',
-                      'Communicating with the authenticator. Follow its touch or enrollment prompts…',
-                    ),
-                  ),
-                ],
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: SelectableText(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                if (_pending)
+                  // 验证中只保留转圈提示，避免 PIN 等输入还留在画面上。
+                  SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.tr(
+                              '正在与认证器通信，请按设备提示触碰或采样…',
+                              'Communicating with the authenticator. Follow its touch or enrollment prompts…',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                  )
+                else ...[
+                  if (widget.detail != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(widget.detail!),
+                    ),
+                  if (widget.askPin)
+                    _pinField(
+                      controller: _pin,
+                      label: widget.tr('设备 PIN', 'Device PIN'),
+                      autofocus: true,
+                      onSubmitted: (_) {
+                        if (!widget.changePin) _submit();
+                      },
+                    ),
+                  if (widget.changePin) ...[
+                    _pinField(
+                      controller: _newPin,
+                      label: widget.tr('新 PIN', 'New PIN'),
+                      autofocus: !widget.askPin,
+                    ),
+                    _pinField(
+                      controller: _confirm,
+                      label: widget.tr('确认新 PIN', 'Confirm new PIN'),
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ],
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: SelectableText(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _pending ? null : () => Navigator.pop(context),
-            child: Text(widget.tr('取消', 'Cancel')),
-          ),
-          FilledButton(
-            onPressed: _pending ? null : _submit,
-            child: Text(widget.tr('确认', 'Confirm')),
-          ),
-        ],
+        actions: _pending
+            ? null
+            : [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(widget.tr('取消', 'Cancel')),
+                ),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(widget.tr('确认', 'Confirm')),
+                ),
+              ],
       ),
     );
   }
@@ -155,7 +170,6 @@ class _OperationDialogState extends State<OperationDialog> {
       obscureText: true,
       keyboardType: TextInputType.visiblePassword,
       autofillHints: const [AutofillHints.password],
-      enabled: !_pending,
       autocorrect: false,
       enableSuggestions: false,
       enableIMEPersonalizedLearning: false,
