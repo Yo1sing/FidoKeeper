@@ -254,6 +254,7 @@ void main() {
     for (final field in tester.widgetList<TextField>(pinField())) {
       expect(field.obscureText, isTrue);
       expect(field.keyboardType, TextInputType.visiblePassword);
+      expect(field.autofillHints, isEmpty);
     }
     await tester.enterText(pinField().at(0), '5678');
     await tester.enterText(pinField().at(1), '5678');
@@ -304,6 +305,7 @@ void main() {
     expect(pin.controller!.text, isEmpty);
     expect(pin.obscureText, isTrue);
     expect(pin.keyboardType, TextInputType.visiblePassword);
+    expect(pin.autofillHints, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

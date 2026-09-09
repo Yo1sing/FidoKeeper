@@ -157,7 +157,7 @@ class _OperationDialogState extends State<OperationDialog> {
     );
   }
 
-  // PIN 按密码框收集，避免输入法按普通文本展示或记住内容。
+  // PIN 只遮盖输入，不声明为账户密码，避免系统自动填入并耗尽尝试次数。
   TextField _pinField({
     required TextEditingController controller,
     required String label,
@@ -169,7 +169,7 @@ class _OperationDialogState extends State<OperationDialog> {
       autofocus: autofocus,
       obscureText: true,
       keyboardType: TextInputType.visiblePassword,
-      autofillHints: const [AutofillHints.password],
+      autofillHints: const <String>[],
       autocorrect: false,
       enableSuggestions: false,
       enableIMEPersonalizedLearning: false,
