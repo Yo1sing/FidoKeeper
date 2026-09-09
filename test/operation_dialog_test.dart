@@ -193,6 +193,35 @@ void main() {
     expect(api.dispatched, [CommandKind.initialize]);
   });
 
+  testWidgets('已加载设置时首帧即使用保存的主题，不跟随系统', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final initialization = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    await tester.pumpWidget(
+      const KeeperApp(
+        desktop: false,
+        preferences: Preferences(
+          locale: 'zh-CN',
+          theme: 'light',
+          hiddenAuthenticators: [],
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+    expect(
+      Theme.of(tester.element(find.byType(Scaffold))).brightness,
+      Brightness.light,
+    );
+    expect(api.dispatched, [CommandKind.initialize]);
+    initialization.complete(api.snapshot);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('忙碌时进入指纹页会在初始化后提交页面事件', (tester) async {
     final result = Completer<Snapshot>();
     api.initialize = () => result.future;

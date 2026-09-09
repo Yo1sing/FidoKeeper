@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/rust/api/keeper.dart' as backend;
+import 'src/rust/api/models.dart';
 import 'pages/devices_page.dart';
 import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
@@ -14,8 +15,9 @@ import 'widgets/fingerprint_enroll_dialog.dart';
 import 'widgets/operation_dialog.dart';
 
 class KeeperApp extends StatefulWidget {
-  const KeeperApp({super.key, this.desktop = true});
+  const KeeperApp({super.key, this.desktop = true, this.preferences});
   final bool desktop;
+  final Preferences? preferences;
   @override
   State<KeeperApp> createState() => _KeeperAppState();
 }
@@ -36,7 +38,16 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
   String tr(String zh, String en) =>
-      _state?.preferences.locale == 'en-US' ? en : zh;
+      (_state?.preferences.locale ?? widget.preferences?.locale) == 'en-US'
+      ? en
+      : zh;
+
+  ThemeMode get _themeMode =>
+      switch (_state?.preferences.theme ?? widget.preferences?.theme) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
 
   @override
   void initState() {
@@ -204,11 +215,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       brightness: Brightness.dark,
       useMaterial3: true,
     ),
-    themeMode: switch (_state?.preferences.theme) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    },
+    themeMode: _themeMode,
     builder: widget.desktop ? VirtualWindowFrameInit() : null,
     home: Builder(
       builder: (context) => Scaffold(
