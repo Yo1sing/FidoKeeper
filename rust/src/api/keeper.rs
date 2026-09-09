@@ -24,6 +24,7 @@ pub enum CommandKind {
     ListBio,
     EnrollBio,
     DeleteBio,
+    RenameBio,
     Reset,
     Filter,
     Theme,
@@ -338,7 +339,10 @@ impl State {
                     .update_pin(&self.active()?.path, &pin, &new_pin)?;
                 self.unlocked_pin = Some(zeroize::Zeroizing::new((*new_pin).clone()));
             }
-            CommandKind::ListBio | CommandKind::EnrollBio | CommandKind::DeleteBio => {
+            CommandKind::ListBio
+            | CommandKind::EnrollBio
+            | CommandKind::DeleteBio
+            | CommandKind::RenameBio => {
                 let device = self.active()?;
                 if !device.fingerprint {
                     return Err("此设备不支持指纹管理".into());
@@ -351,6 +355,20 @@ impl State {
                     CommandKind::EnrollBio => {
                         self.hardware.enroll(&device.path, &pin)?;
                         self.templates = self.hardware.fingerprints(&device.path, &pin)?;
+                    }
+                    CommandKind::RenameBio => {
+                        let name = new_pin.trim().to_owned();
+                        if name.is_empty() || name.contains('\0') || name.len() > 64 {
+                            return Err("指纹名称不能为空、不能包含空字符，且最多 64 字节".into());
+                        }
+                        if !self.templates.iter().any(|t| t.id == value) {
+                            return Err("指纹不存在，请刷新".into());
+                        }
+                        self.hardware
+                            .rename_fingerprint(&device.path, &pin, &value, &name)?;
+                        if let Some(template) = self.templates.iter_mut().find(|t| t.id == value) {
+                            template.name = name;
+                        }
                     }
                     _ => {
                         if !self.templates.iter().any(|t| t.id == value) {
@@ -487,6 +505,9 @@ mod tests {
         fn remove_fingerprint(&mut self, _: &str, _: &str, _: &str) -> Result<(), String> {
             Ok(())
         }
+        fn rename_fingerprint(&mut self, _: &str, _: &str, _: &str, _: &str) -> Result<(), String> {
+            Ok(())
+        }
         fn reset(&mut self, _: &str) -> Result<(), String> {
             if self.fail {
                 Err("模拟重置失败".into())
@@ -568,6 +589,30 @@ mod tests {
         assert_eq!(
             state.apply(command(CommandKind::ListBio, "")).unwrap_err(),
             "请先选择认证器"
+        );
+    }
+    #[test]
+    fn renaming_fingerprint_updates_template_name() {
+        let mut state = state();
+        let mut bio = device("one");
+        bio.fingerprint = true;
+        state.devices[0] = bio.clone();
+        state.active = Some(bio);
+        state.templates = vec![BioTemplateSummary {
+            id: "t1".to_owned(),
+            name: "finger".to_owned(),
+        }];
+        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
+        let mut request = command(CommandKind::RenameBio, "t1");
+        request.new_pin = " 右手食指 ".to_owned();
+        state.apply(request).unwrap();
+        assert_eq!(state.templates[0].name, "右手食指");
+        let mut empty = command(CommandKind::RenameBio, "t1");
+        empty.new_pin = "   ".to_owned();
+        assert_eq!(
+            state.apply(empty).unwrap_err(),
+            "指纹名称不能为空、不能包含空字符，且最多 64 字节"
         );
     }
     #[test]

@@ -40,6 +40,8 @@ pub struct RawApi {
         *mut fido_bio_template_array_t,
         *const c_char,
     ) -> c_int,
+    pub fido_bio_dev_set_template_name:
+        unsafe extern "C" fn(*mut fido_dev_t, *const fido_bio_template_t, *const c_char) -> c_int,
     pub fido_bio_enroll_free: unsafe extern "C" fn(*mut *mut fido_bio_enroll_t) -> (),
     pub fido_bio_enroll_new: unsafe extern "C" fn() -> *mut fido_bio_enroll_t,
     pub fido_bio_enroll_remaining_samples: unsafe extern "C" fn(*const fido_bio_enroll_t) -> u8,
@@ -59,6 +61,8 @@ pub struct RawApi {
     pub fido_bio_template_new: unsafe extern "C" fn() -> *mut fido_bio_template_t,
     pub fido_bio_template_set_id:
         unsafe extern "C" fn(*mut fido_bio_template_t, *const u8, usize) -> c_int,
+    pub fido_bio_template_set_name:
+        unsafe extern "C" fn(*mut fido_bio_template_t, *const c_char) -> c_int,
     pub fido_cbor_info_free: unsafe extern "C" fn(*mut *mut fido_cbor_info_t) -> (),
     pub fido_cbor_info_new: unsafe extern "C" fn() -> *mut fido_cbor_info_t,
     pub fido_cbor_info_options_len: unsafe extern "C" fn(*const fido_cbor_info_t) -> usize,
@@ -137,6 +141,7 @@ impl RawApi {
             fido_bio_dev_enroll_remove: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, *const fido_bio_template_t, *const c_char) -> c_int>(b"fido_bio_dev_enroll_remove\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_dev_enroll_remove：{e}"))?,
             fido_bio_dev_get_info: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, *mut fido_bio_info_t) -> c_int>(b"fido_bio_dev_get_info\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_dev_get_info：{e}"))?,
             fido_bio_dev_get_template_array: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, *mut fido_bio_template_array_t, *const c_char) -> c_int>(b"fido_bio_dev_get_template_array\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_dev_get_template_array：{e}"))?,
+            fido_bio_dev_set_template_name: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, *const fido_bio_template_t, *const c_char) -> c_int>(b"fido_bio_dev_set_template_name\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_dev_set_template_name：{e}"))?,
             fido_bio_enroll_free: *library.get::<unsafe extern "C" fn(*mut *mut fido_bio_enroll_t) -> ()>(b"fido_bio_enroll_free\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_enroll_free：{e}"))?,
             fido_bio_enroll_new: *library.get::<unsafe extern "C" fn() -> *mut fido_bio_enroll_t>(b"fido_bio_enroll_new\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_enroll_new：{e}"))?,
             fido_bio_enroll_remaining_samples: *library.get::<unsafe extern "C" fn(*const fido_bio_enroll_t) -> u8>(b"fido_bio_enroll_remaining_samples\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_enroll_remaining_samples：{e}"))?,
@@ -152,6 +157,7 @@ impl RawApi {
             fido_bio_template_name: *library.get::<unsafe extern "C" fn(*const fido_bio_template_t) -> *const c_char>(b"fido_bio_template_name\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_template_name：{e}"))?,
             fido_bio_template_new: *library.get::<unsafe extern "C" fn() -> *mut fido_bio_template_t>(b"fido_bio_template_new\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_template_new：{e}"))?,
             fido_bio_template_set_id: *library.get::<unsafe extern "C" fn(*mut fido_bio_template_t, *const u8, usize) -> c_int>(b"fido_bio_template_set_id\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_template_set_id：{e}"))?,
+            fido_bio_template_set_name: *library.get::<unsafe extern "C" fn(*mut fido_bio_template_t, *const c_char) -> c_int>(b"fido_bio_template_set_name\0").map_err(|e| format!("缺少 libfido2 符号 fido_bio_template_set_name：{e}"))?,
             fido_cbor_info_free: *library.get::<unsafe extern "C" fn(*mut *mut fido_cbor_info_t) -> ()>(b"fido_cbor_info_free\0").map_err(|e| format!("缺少 libfido2 符号 fido_cbor_info_free：{e}"))?,
             fido_cbor_info_new: *library.get::<unsafe extern "C" fn() -> *mut fido_cbor_info_t>(b"fido_cbor_info_new\0").map_err(|e| format!("缺少 libfido2 符号 fido_cbor_info_new：{e}"))?,
             fido_cbor_info_options_len: *library.get::<unsafe extern "C" fn(*const fido_cbor_info_t) -> usize>(b"fido_cbor_info_options_len\0").map_err(|e| format!("缺少 libfido2 符号 fido_cbor_info_options_len：{e}"))?,

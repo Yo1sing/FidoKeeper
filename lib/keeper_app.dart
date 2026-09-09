@@ -81,10 +81,11 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   Future<void> _act(
     backend.CommandKind kind, {
     String value = '',
+    String newPin = '',
     bool enqueue = false,
   }) async {
     try {
-      await _dispatch(kind, value: value, enqueue: enqueue);
+      await _dispatch(kind, value: value, newPin: newPin, enqueue: enqueue);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     }

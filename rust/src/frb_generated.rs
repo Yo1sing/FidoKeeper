@@ -245,11 +245,12 @@ impl SseDecode for crate::api::keeper::CommandKind {
             11 => crate::api::keeper::CommandKind::ListBio,
             12 => crate::api::keeper::CommandKind::EnrollBio,
             13 => crate::api::keeper::CommandKind::DeleteBio,
-            14 => crate::api::keeper::CommandKind::Reset,
-            15 => crate::api::keeper::CommandKind::Filter,
-            16 => crate::api::keeper::CommandKind::Theme,
-            17 => crate::api::keeper::CommandKind::Locale,
-            18 => crate::api::keeper::CommandKind::Shutdown,
+            14 => crate::api::keeper::CommandKind::RenameBio,
+            15 => crate::api::keeper::CommandKind::Reset,
+            16 => crate::api::keeper::CommandKind::Filter,
+            17 => crate::api::keeper::CommandKind::Theme,
+            18 => crate::api::keeper::CommandKind::Locale,
+            19 => crate::api::keeper::CommandKind::Shutdown,
             _ => unreachable!("Invalid variant for CommandKind: {}", inner),
         };
     }
@@ -578,11 +579,12 @@ impl flutter_rust_bridge::IntoDart for crate::api::keeper::CommandKind {
             Self::ListBio => 11.into_dart(),
             Self::EnrollBio => 12.into_dart(),
             Self::DeleteBio => 13.into_dart(),
-            Self::Reset => 14.into_dart(),
-            Self::Filter => 15.into_dart(),
-            Self::Theme => 16.into_dart(),
-            Self::Locale => 17.into_dart(),
-            Self::Shutdown => 18.into_dart(),
+            Self::RenameBio => 14.into_dart(),
+            Self::Reset => 15.into_dart(),
+            Self::Filter => 16.into_dart(),
+            Self::Theme => 17.into_dart(),
+            Self::Locale => 18.into_dart(),
+            Self::Shutdown => 19.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -812,11 +814,12 @@ impl SseEncode for crate::api::keeper::CommandKind {
                 crate::api::keeper::CommandKind::ListBio => 11,
                 crate::api::keeper::CommandKind::EnrollBio => 12,
                 crate::api::keeper::CommandKind::DeleteBio => 13,
-                crate::api::keeper::CommandKind::Reset => 14,
-                crate::api::keeper::CommandKind::Filter => 15,
-                crate::api::keeper::CommandKind::Theme => 16,
-                crate::api::keeper::CommandKind::Locale => 17,
-                crate::api::keeper::CommandKind::Shutdown => 18,
+                crate::api::keeper::CommandKind::RenameBio => 14,
+                crate::api::keeper::CommandKind::Reset => 15,
+                crate::api::keeper::CommandKind::Filter => 16,
+                crate::api::keeper::CommandKind::Theme => 17,
+                crate::api::keeper::CommandKind::Locale => 18,
+                crate::api::keeper::CommandKind::Shutdown => 19,
                 _ => {
                     unimplemented!("");
                 }

@@ -74,7 +74,9 @@ impl<T: PacketIO> HidLink<T> {
             if left.is_zero() {
                 return Err("设备响应超时".into());
             }
-            let packet = self.io.read(left.as_millis().min(i32::MAX as u128) as i32)?;
+            let packet = self
+                .io
+                .read(left.as_millis().min(i32::MAX as u128) as i32)?;
             if let Some(payload) = decoder.push(&packet)? {
                 return Ok(payload);
             }
@@ -198,9 +200,8 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
                 });
             }
         }
-        credentials.sort_by(|a, b| {
-            (&a.rp_id, &a.user_name, &a.id).cmp(&(&b.rp_id, &b.user_name, &b.id))
-        });
+        credentials
+            .sort_by(|a, b| (&a.rp_id, &a.user_name, &a.id).cmp(&(&b.rp_id, &b.user_name, &b.id)));
         Ok(Inventory {
             existing,
             remaining,
@@ -272,7 +273,10 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         let result = (|| {
             let begin = session.bio(
                 0x01,
-                Some(cbor::map(vec![(cbor::integer(0x03), cbor::integer(30_000))])),
+                Some(cbor::map(vec![(
+                    cbor::integer(0x03),
+                    cbor::integer(30_000),
+                )])),
                 Some((&proto, &token)),
             )?;
             require_good_sample(&begin)?;
@@ -313,6 +317,28 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         session.bio(
             0x06,
             Some(cbor::map(vec![(cbor::integer(0x01), cbor::bytes(id))])),
+            Some((&proto, &token)),
+        )?;
+        Ok(())
+    }
+
+    fn rename_fingerprint(
+        &mut self,
+        path: &str,
+        pin: &str,
+        id: &str,
+        name: &str,
+    ) -> Result<(), String> {
+        let id = decode_hex(id)?;
+        let mut session = self.session(path)?;
+        let token = session.pin_token(pin, PIN_PERM_BIO)?;
+        let proto = session.protocol()?;
+        session.bio(
+            0x05,
+            Some(cbor::map(vec![
+                (cbor::integer(0x01), cbor::bytes(id)),
+                (cbor::integer(0x02), cbor::text(name.to_owned())),
+            ])),
             Some((&proto, &token)),
         )?;
         Ok(())
@@ -508,8 +534,8 @@ impl Session {
             Err(error) if is_empty_ctap(&error) => return Ok(vec![]),
             Err(error) => return Err(error),
         };
-        let total = cbor::as_u64(cbor::map_get(&first, 0x05).unwrap_or(&cbor::integer(1)))
-            .unwrap_or(1);
+        let total =
+            cbor::as_u64(cbor::map_get(&first, 0x05).unwrap_or(&cbor::integer(1))).unwrap_or(1);
         if total == 0 {
             return Ok(vec![]);
         }
@@ -526,14 +552,17 @@ impl Session {
         proto: &PinProtocol,
         token: &Zeroizing<Vec<u8>>,
     ) -> Result<Vec<CredRecord>, String> {
-        let params = cbor::map(vec![(cbor::integer(0x01), cbor::bytes(rp_id_hash.to_vec()))]);
+        let params = cbor::map(vec![(
+            cbor::integer(0x01),
+            cbor::bytes(rp_id_hash.to_vec()),
+        )]);
         let first = match self.credman(0x04, Some(params), Some((proto, token))) {
             Ok(value) => value,
             Err(error) if is_empty_ctap(&error) => return Ok(vec![]),
             Err(error) => return Err(error),
         };
-        let total = cbor::as_u64(cbor::map_get(&first, 0x09).unwrap_or(&cbor::integer(1)))
-            .unwrap_or(1);
+        let total =
+            cbor::as_u64(cbor::map_get(&first, 0x09).unwrap_or(&cbor::integer(1))).unwrap_or(1);
         let mut records = vec![cred_record(&first)?];
         for _ in 1..total {
             records.push(cred_record(&self.credman(0x05, None, None)?)?);
@@ -557,14 +586,11 @@ fn read_info(link: &mut dyn CtapLink) -> Result<Info, String> {
     };
     let versions = cbor::map_get(&value, 1)
         .and_then(cbor::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(cbor::as_text)
-                .collect::<Vec<_>>()
-        })
+        .map(|items| items.iter().filter_map(cbor::as_text).collect::<Vec<_>>())
         .unwrap_or_default();
-    let options = cbor::map_get(&value, 4).cloned().unwrap_or_else(|| cbor::map(vec![]));
+    let options = cbor::map_get(&value, 4)
+        .cloned()
+        .unwrap_or_else(|| cbor::map(vec![]));
     let pin_protocols = cbor::map_get(&value, 6)
         .and_then(cbor::as_array)
         .map(|items| items.iter().filter_map(cbor::as_u8).collect())

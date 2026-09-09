@@ -11,6 +11,7 @@ class FakeApi extends Fake implements RustLibApi {
   Future<Snapshot> Function(Command)? operation;
   Future<Snapshot> Function()? initialize;
   final dispatched = <CommandKind>[];
+  Command? last;
   var snapshot = Snapshot(
     canManageCredentials: true,
     canManageFingerprints: false,
@@ -65,6 +66,7 @@ class FakeApi extends Fake implements RustLibApi {
   @override
   Future<Snapshot> crateApiKeeperDispatch({required Command command}) async {
     dispatched.add(command.kind);
+    last = command;
     if (command.kind == CommandKind.initialize) {
       return initialize == null ? snapshot : initialize!();
     }
@@ -86,6 +88,27 @@ class FakeApi extends Fake implements RustLibApi {
     }
     if (command.kind == CommandKind.disconnect) {
       snapshot = _copy(clearActive: true);
+      return snapshot;
+    }
+    if (command.kind == CommandKind.renameBio) {
+      snapshot = Snapshot(
+        canManageCredentials: snapshot.canManageCredentials,
+        canManageFingerprints: snapshot.canManageFingerprints,
+        devices: snapshot.devices,
+        active: snapshot.active,
+        credentials: snapshot.credentials,
+        existing: snapshot.existing,
+        remaining: snapshot.remaining,
+        templates: [
+          for (final template in snapshot.templates)
+            if (template.id == command.value)
+              BioTemplateSummary(id: template.id, name: command.newPin.trim())
+            else
+              template,
+        ],
+        preferences: snapshot.preferences,
+        query: snapshot.query,
+      );
       return snapshot;
     }
     return operation == null ? snapshot : operation!(command);
@@ -409,6 +432,57 @@ void main() {
     expect(find.text('测试认证器'), findsOneWidget);
     expect(find.text('已解锁'), findsOneWidget);
     expect(find.text('当前认证器不支持指纹'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('指纹页可以重命名模板', (tester) async {
+    const device = DeviceSummary(
+      transport: Transport.usb,
+      label: 'USB 密钥',
+      path: 'bio-device',
+      protocol: 'CTAP2',
+      credentialManagement: true,
+      pin: true,
+      fingerprint: true,
+    );
+    api.snapshot = Snapshot(
+      canManageCredentials: true,
+      canManageFingerprints: true,
+      devices: const [device],
+      active: device,
+      credentials: const [],
+      existing: BigInt.zero,
+      remaining: BigInt.zero,
+      templates: const [BioTemplateSummary(id: 't1', name: 'finger')],
+      preferences: api.snapshot.preferences,
+      query: '',
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('指纹'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('finger'), findsOneWidget);
+    await tester.tap(find.byTooltip('重命名指纹'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      '右手食指',
+    );
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(api.last!.kind, CommandKind.renameBio);
+    expect(api.last!.value, 't1');
+    expect(api.last!.newPin, '右手食指');
+    expect(find.text('右手食指'), findsOneWidget);
+    expect(find.text('finger'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

@@ -5,7 +5,12 @@ pub const CMD_ERROR: u8 = 0x3F;
 pub const CMD_KEEPALIVE: u8 = 0x3B;
 pub const BROADCAST: u32 = 0xFFFFFFFF;
 
-pub fn encode_frames(cid: u32, cmd: u8, data: &[u8], packet_size: usize) -> Result<Vec<Vec<u8>>, String> {
+pub fn encode_frames(
+    cid: u32,
+    cmd: u8,
+    data: &[u8],
+    packet_size: usize,
+) -> Result<Vec<Vec<u8>>, String> {
     if packet_size < 8 {
         return Err("HID 报文过短".into());
     }

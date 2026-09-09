@@ -72,6 +72,7 @@ enum CommandKind {
   listBio,
   enrollBio,
   deleteBio,
+  renameBio,
   reset,
   filter,
   theme,

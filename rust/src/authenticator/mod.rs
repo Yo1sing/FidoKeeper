@@ -1,7 +1,7 @@
-mod native;
-mod ctap;
 #[cfg(target_os = "android")]
 mod android;
+mod ctap;
+mod native;
 use crate::api::models::{BioTemplateSummary, CredentialSummary, DeviceSummary};
 use native::*;
 use std::{
@@ -25,6 +25,13 @@ pub trait Authenticator {
     fn fingerprints(&mut self, path: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String>;
     fn enroll(&mut self, path: &str, pin: &str) -> Result<(), String>;
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
+    fn rename_fingerprint(
+        &mut self,
+        path: &str,
+        pin: &str,
+        id: &str,
+        name: &str,
+    ) -> Result<(), String>;
     fn reset(&mut self, path: &str) -> Result<(), String>;
 }
 
@@ -411,6 +418,36 @@ impl Authenticator for NativeAuthenticator {
                 id.len(),
             ))?;
             api.check((api.fido_bio_dev_enroll_remove)(
+                s.raw(),
+                template.raw(),
+                pin.as_ptr().cast(),
+            ))
+        }
+    }
+    fn rename_fingerprint(
+        &mut self,
+        path: &str,
+        pin: &str,
+        id: &str,
+        name: &str,
+    ) -> Result<(), String> {
+        let id = decode(id)?;
+        let pin = secret(pin)?;
+        let name = CString::new(name).map_err(|_| "指纹名称包含空字符")?;
+        let s = Session::open(path)?;
+        let api = s.api;
+        unsafe {
+            let template = Owned::new((api.fido_bio_template_new)(), api.fido_bio_template_free)?;
+            api.check((api.fido_bio_template_set_id)(
+                template.raw(),
+                id.as_ptr(),
+                id.len(),
+            ))?;
+            api.check((api.fido_bio_template_set_name)(
+                template.raw(),
+                name.as_ptr(),
+            ))?;
+            api.check((api.fido_bio_dev_set_template_name)(
                 s.raw(),
                 template.raw(),
                 pin.as_ptr().cast(),

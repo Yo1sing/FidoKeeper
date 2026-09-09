@@ -7,6 +7,7 @@ typedef Translate = String Function(String zh, String en);
 typedef RunAction = Future<void> Function(
   backend.CommandKind kind, {
   String value,
+  String newPin,
 });
 
 typedef PromptOperation = Future<void> Function(

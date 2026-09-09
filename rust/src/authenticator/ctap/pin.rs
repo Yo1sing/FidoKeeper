@@ -39,7 +39,11 @@ impl PinProtocol {
         let point = EncodedPoint::from(secret.public_key());
         let ours_x = point.x().ok_or("无法导出本地公钥")?.to_vec();
         let ours_y = point.y().ok_or("无法导出本地公钥")?.to_vec();
-        Ok((ours_x, ours_y, self.kdf(shared.raw_secret_bytes().as_slice())))
+        Ok((
+            ours_x,
+            ours_y,
+            self.kdf(shared.raw_secret_bytes().as_slice()),
+        ))
     }
 
     fn kdf(&self, z: &[u8]) -> Vec<u8> {
@@ -49,8 +53,10 @@ impl PinProtocol {
         let hk = Hkdf::<Sha256>::new(Some(&[0u8; 32]), z);
         let mut hmac_key = [0u8; 32];
         let mut aes_key = [0u8; 32];
-        hk.expand(b"CTAP2 HMAC key", &mut hmac_key).expect("HKDF 长度固定");
-        hk.expand(b"CTAP2 AES key", &mut aes_key).expect("HKDF 长度固定");
+        hk.expand(b"CTAP2 HMAC key", &mut hmac_key)
+            .expect("HKDF 长度固定");
+        hk.expand(b"CTAP2 AES key", &mut aes_key)
+            .expect("HKDF 长度固定");
         let mut out = hmac_key.to_vec();
         out.extend_from_slice(&aes_key);
         out
@@ -70,7 +76,12 @@ impl PinProtocol {
 
     pub fn decrypt(&self, secret: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, String> {
         if self.version == 1 {
-            aes_cbc(&secret[..32.min(secret.len())], &[0u8; 16], ciphertext, false)
+            aes_cbc(
+                &secret[..32.min(secret.len())],
+                &[0u8; 16],
+                ciphertext,
+                false,
+            )
         } else {
             if ciphertext.len() < 16 {
                 return Err("PIN 令牌密文过短".into());

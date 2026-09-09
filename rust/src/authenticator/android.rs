@@ -38,7 +38,9 @@ impl DeviceSource for AndroidSource {
             let length = env.get_array_length(&array).map_err(jni_err)?;
             let mut devices = Vec::new();
             for index in 0..length {
-                let item = env.get_object_array_element(&array, index).map_err(jni_err)?;
+                let item = env
+                    .get_object_array_element(&array, index)
+                    .map_err(jni_err)?;
                 let line = jobject_to_string(env, item)?;
                 let (path, label) = line.split_once('\t').unwrap_or((line.as_str(), ""));
                 devices.push((path.to_owned(), label.to_owned()));
@@ -51,7 +53,12 @@ impl DeviceSource for AndroidSource {
         let handle = with_host(|env, host| {
             let jpath = env.new_string(path).map_err(jni_err)?;
             let result = env
-                .call_method(host, "open", "(Ljava/lang/String;)I", &[JValue::from(&jpath)])
+                .call_method(
+                    host,
+                    "open",
+                    "(Ljava/lang/String;)I",
+                    &[JValue::from(&jpath)],
+                )
                 .map_err(jni_err)?;
             result.i().map_err(jni_err)
         })?;
@@ -194,7 +201,10 @@ fn exception_message(env: &mut JNIEnv) -> String {
     let Ok(message) = value.l() else {
         return fallback;
     };
-    jobject_to_string(env, message).ok().filter(|s| !s.is_empty()).unwrap_or(fallback)
+    jobject_to_string(env, message)
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or(fallback)
 }
 
 fn jobject_to_string(env: &mut JNIEnv, obj: JObject) -> Result<String, String> {
@@ -218,7 +228,10 @@ fn store_vm(env: &JNIEnv) {
 }
 
 #[no_mangle]
-pub extern "system" fn JNI_OnLoad(vm: *mut jni::sys::JavaVM, _reserved: *mut std::ffi::c_void) -> jint {
+pub extern "system" fn JNI_OnLoad(
+    vm: *mut jni::sys::JavaVM,
+    _reserved: *mut std::ffi::c_void,
+) -> jint {
     if let Ok(vm) = unsafe { JavaVM::from_raw(vm) } {
         let _ = VM.set(vm);
     }
