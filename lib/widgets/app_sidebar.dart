@@ -210,7 +210,7 @@ class _NavItem extends StatelessWidget {
                       iconWidget,
                       const SizedBox(width: 12),
                       Expanded(child: labelWidget),
-                      if (trailing != null) trailing!,
+                      ?trailing,
                     ],
                   ),
                 ),
