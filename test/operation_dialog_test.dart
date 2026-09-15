@@ -14,6 +14,7 @@ import 'package:window_manager/window_manager.dart';
 class FakeApi extends Fake implements RustLibApi {
   Future<Snapshot> Function(Command)? operation;
   Future<Snapshot> Function()? initialize;
+  Future<Snapshot> Function()? scan;
   final dispatched = <CommandKind>[];
   Command? last;
   var captured = 0;
@@ -79,7 +80,7 @@ class FakeApi extends Fake implements RustLibApi {
       return initialize == null ? snapshot : initialize!();
     }
     if (command.kind == CommandKind.scan) {
-      return snapshot;
+      return scan == null ? snapshot : scan!();
     }
     if (command.kind == CommandKind.connect) {
       if (operation != null) {
@@ -349,6 +350,7 @@ void main() {
       ),
       findsNothing,
     );
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.textContaining('正在与认证器通信'), findsOneWidget);
     result.complete(api.snapshot);
     await tester.pumpAndSettle();
@@ -383,6 +385,34 @@ void main() {
     await tester.pumpAndSettle();
     result.complete(api.snapshot);
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('扫描认证器时用转圈替代顶部进度条', (tester) async {
+    final scan = Completer<Snapshot>();
+    api.scan = () => scan.future;
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('认证器'));
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    scan.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('初始化认证器时用转圈替代顶部进度条', (tester) async {
+    final initialization = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    initialization.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

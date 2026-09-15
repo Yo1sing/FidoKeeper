@@ -30,8 +30,16 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   int _pending = 0;
   backend.CommandKind? _busyKind;
   bool get _busy => _pending > 0;
+  bool get _scanningAuthenticators =>
+      _busy &&
+      (_busyKind == backend.CommandKind.scan ||
+          _busyKind == backend.CommandKind.initialize);
   bool get _showBusyBar =>
-      _closing || (_busy && _busyKind != backend.CommandKind.enrollBio);
+      _closing ||
+      (_busy &&
+          !_scanningAuthenticators &&
+          _busyKind != backend.CommandKind.connect &&
+          _busyKind != backend.CommandKind.enrollBio);
   Future<void> _queue = Future<void>.value();
   bool _closing = false;
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
@@ -222,6 +230,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         0 => DevicesPage(
           snapshot: _state,
           busy: _busy,
+          scanning: _scanningAuthenticators,
           closing: _closing,
           tr: tr,
           onAction: _act,
@@ -309,6 +318,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           onDestinationSelected: _selectPage,
           onScanDevices: () => _act(backend.CommandKind.scan),
           scanEnabled: !_busy && !_closing,
+          scanning: _scanningAuthenticators,
           tr: tr,
         );
         return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -95,6 +95,24 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
+  testWidgets('桌面扫描中刷新按钮变为转圈', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        AppSidebar(
+          selectedIndex: 0,
+          onDestinationSelected: (_) {},
+          onScanDevices: () {},
+          scanning: true,
+          scanEnabled: false,
+          tr: _tr,
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.refresh), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byTooltip('重新扫描'), findsOneWidget);
+  });
+
   testWidgets('移动端把导航放在屏幕下半部', (tester) async {
     RustLib.initMock(api: _FakeApi());
     addTearDown(RustLib.dispose);

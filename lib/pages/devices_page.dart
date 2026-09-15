@@ -11,6 +11,7 @@ class DevicesPage extends StatelessWidget {
     super.key,
     required this.snapshot,
     required this.busy,
+    required this.scanning,
     required this.closing,
     required this.tr,
     required this.onAction,
@@ -19,6 +20,7 @@ class DevicesPage extends StatelessWidget {
 
   final backend.Snapshot? snapshot;
   final bool busy;
+  final bool scanning;
   final bool closing;
   final Translate tr;
   final RunAction onAction;
@@ -43,55 +45,69 @@ class DevicesPage extends StatelessWidget {
             ? math.min(inner, targetWidth)
             : (inner - gap * (columns - 1)) / columns;
 
-        return Padding(
-          padding: EdgeInsets.fromLTRB(padding, 20, padding, 24),
-          child: snapshot != null && devices.isEmpty
-              ? _EmptyState(tr: tr)
-              : SizedBox(
-                  width: inner,
-                  child: SingleChildScrollView(
-                    child: Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      alignment: WrapAlignment.start,
-                      crossAxisAlignment: WrapCrossAlignment.start,
-                      children: [
-                        for (final device in devices)
-                          SizedBox(
-                            width: cardWidth,
-                            child: _DeviceCard(
-                              device: device,
-                              connected: snapshot?.active?.path == device.path,
-                              locked: _locked,
-                              tr: tr,
-                              onConnect: () => onPrompt(
-                                context,
-                                backend.CommandKind.connect,
-                                tr('选择认证器', 'Select authenticator'),
-                                value: device.path,
-                                detail: device.label,
+        return Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(padding, 20, padding, 24),
+              child: snapshot != null && devices.isEmpty
+                  ? _EmptyState(tr: tr)
+                  : SizedBox(
+                      width: inner,
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: gap,
+                          runSpacing: gap,
+                          alignment: WrapAlignment.start,
+                          crossAxisAlignment: WrapCrossAlignment.start,
+                          children: [
+                            for (final device in devices)
+                              SizedBox(
+                                width: cardWidth,
+                                child: _DeviceCard(
+                                  device: device,
+                                  connected:
+                                      snapshot?.active?.path == device.path,
+                                  locked: _locked,
+                                  tr: tr,
+                                  onConnect: () => onPrompt(
+                                    context,
+                                    backend.CommandKind.connect,
+                                    tr('选择认证器', 'Select authenticator'),
+                                    value: device.path,
+                                    detail: device.label,
+                                  ),
+                                  onDisconnect: () =>
+                                      onAction(backend.CommandKind.disconnect),
+                                  onHide: () => onAction(
+                                    backend.CommandKind.hide_,
+                                    value: device.path,
+                                  ),
+                                  onReset: () => onPrompt(
+                                    context,
+                                    backend.CommandKind.reset,
+                                    tr('重置认证器', 'Reset authenticator'),
+                                    value: device.path,
+                                    detail:
+                                        '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
+                                  ),
+                                  onDetails: () =>
+                                      _showDetails(context, device),
+                                ),
                               ),
-                              onDisconnect: () =>
-                                  onAction(backend.CommandKind.disconnect),
-                              onHide: () => onAction(
-                                backend.CommandKind.hide_,
-                                value: device.path,
-                              ),
-                              onReset: () => onPrompt(
-                                context,
-                                backend.CommandKind.reset,
-                                tr('重置认证器', 'Reset authenticator'),
-                                value: device.path,
-                                detail:
-                                    '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
-                              ),
-                              onDetails: () => _showDetails(context, device),
-                            ),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+            ),
+            if (scanning)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Theme.of(context).colorScheme.surface
+                      .withValues(alpha: 0.64),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
+              ),
+          ],
         );
       },
     );

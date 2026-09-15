@@ -18,6 +18,7 @@ class AppSidebar extends StatelessWidget {
     required this.tr,
     this.onScanDevices,
     this.scanEnabled = true,
+    this.scanning = false,
     this.bottom = false,
   });
 
@@ -26,6 +27,7 @@ class AppSidebar extends StatelessWidget {
   final Translate tr;
   final VoidCallback? onScanDevices;
   final bool scanEnabled;
+  final bool scanning;
 
   /// 移动端为 true，导航横排贴在屏幕底部。
   final bool bottom;
@@ -48,7 +50,16 @@ class AppSidebar extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 28, height: 28),
       onPressed: scanEnabled ? onScanDevices : null,
-      icon: Icon(Icons.refresh, color: scheme.primary),
+      icon: scanning
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: scheme.primary,
+              ),
+            )
+          : Icon(Icons.refresh, color: scheme.primary),
     );
 
     Widget items(double itemExtent, {required bool vertical}) {
