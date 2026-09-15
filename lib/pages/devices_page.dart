@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../src/rust/api/keeper.dart' as backend;
 import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
+import '../widgets/action_menu.dart';
 
 class DevicesPage extends StatelessWidget {
   const DevicesPage({
@@ -314,9 +315,33 @@ class _DeviceCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  PopupMenuButton<String>(
+                  ActionMenuButton(
                     tooltip: tr('更多操作', 'More actions'),
                     enabled: !locked,
+                    items: [
+                      ActionMenuItem(
+                        value: 'details',
+                        label: tr('详情', 'Details'),
+                        icon: Icons.info_outline,
+                      ),
+                      if (connected)
+                        ActionMenuItem(
+                          value: 'disconnect',
+                          label: tr('断开连接', 'Disconnect'),
+                          icon: Icons.link_off,
+                        ),
+                      ActionMenuItem(
+                        value: 'hide',
+                        label: tr('隐藏设备', 'Hide device'),
+                        icon: Icons.visibility_off_outlined,
+                      ),
+                      ActionMenuItem(
+                        value: 'reset',
+                        label: tr('重置设备…', 'Reset device…'),
+                        icon: Icons.restart_alt,
+                        destructive: true,
+                      ),
+                    ],
                     onSelected: (action) {
                       switch (action) {
                         case 'details':
@@ -329,28 +354,6 @@ class _DeviceCard extends StatelessWidget {
                           onReset();
                       }
                     },
-                    itemBuilder: (_) => [
-                      PopupMenuItem(
-                        value: 'details',
-                        child: Text(tr('详情', 'Details')),
-                      ),
-                      if (connected)
-                        PopupMenuItem(
-                          value: 'disconnect',
-                          child: Text(tr('断开连接', 'Disconnect')),
-                        ),
-                      PopupMenuItem(
-                        value: 'hide',
-                        child: Text(tr('隐藏设备', 'Hide device')),
-                      ),
-                      PopupMenuItem(
-                        value: 'reset',
-                        child: Text(
-                          tr('重置设备…', 'Reset device…'),
-                          style: TextStyle(color: scheme.error),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
