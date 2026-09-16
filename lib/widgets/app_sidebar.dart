@@ -6,9 +6,13 @@ import 'system_glass.dart';
 const _sideItemHeight = 44.0;
 const _bottomItemHeight = 64.0;
 const _itemGap = 4.0;
+const _sideHighlightRadius = 14.0;
+const _dockRadius = 28.0;
+const _dockInset = 4.0;
 
 /// 底栏本体高度（不含系统安全区），供内容区额外留白。
-const bottomNavOverlayExtent = 8 + 4 + _bottomItemHeight + 4 + 8;
+const bottomNavOverlayExtent =
+    8 + _dockInset + _bottomItemHeight + _dockInset + 8;
 
 class AppSidebar extends StatelessWidget {
   const AppSidebar({
@@ -68,16 +72,21 @@ class AppSidebar extends StatelessWidget {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
-            top: vertical ? selectedIndex * (_sideItemHeight + _itemGap) : 4,
-            bottom: vertical ? null : 4,
+            // 底栏高亮四边同一 inset，圆角与 dock 一致，避免上下比左右更窄。
+            top: vertical
+                ? selectedIndex * (_sideItemHeight + _itemGap)
+                : _dockInset,
+            bottom: vertical ? null : _dockInset,
             height: vertical ? _sideItemHeight : null,
-            left: vertical ? 0 : selectedIndex * itemExtent + 4,
+            left: vertical ? 0 : selectedIndex * itemExtent + _dockInset,
             right: vertical ? 0 : null,
-            width: vertical ? null : itemExtent - 8,
+            width: vertical ? null : itemExtent - _dockInset * 2,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(
+                  vertical ? _sideHighlightRadius : _dockRadius,
+                ),
               ),
             ),
           ),
@@ -137,9 +146,11 @@ class AppSidebar extends StatelessWidget {
           ? EdgeInsets.fromLTRB(16, 8, 16, 8 + safeBottom)
           : const EdgeInsets.fromLTRB(16, 16, 8, 16),
       child: SystemGlass(
-        radius: bottom ? 28 : 24,
+        radius: bottom ? _dockRadius : 24,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(8, bottom ? 4 : 12, 8, bottom ? 4 : 12),
+          padding: bottom
+              ? const EdgeInsets.all(_dockInset)
+              : const EdgeInsets.fromLTRB(8, 12, 8, 12),
           child: nav,
         ),
       ),
@@ -170,7 +181,9 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final radius = BorderRadius.circular(14);
+    final radius = BorderRadius.circular(
+      vertical ? _dockRadius : _sideHighlightRadius,
+    );
     final iconWidget = Icon(
       selected ? selectedIcon : icon,
       size: vertical ? 24 : 22,
@@ -189,7 +202,7 @@ class _NavItem extends StatelessWidget {
     );
 
     return SizedBox(
-      height: vertical ? _bottomItemHeight - 8 : _sideItemHeight,
+      height: vertical ? _bottomItemHeight : _sideItemHeight,
       child: Material(
         color: Colors.transparent,
         borderRadius: radius,

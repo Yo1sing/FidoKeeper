@@ -75,6 +75,47 @@ void main() {
     );
   });
 
+  testWidgets('底栏选中高亮与 dock 圆角一致，上下空隙相等', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        AppSidebar(
+          selectedIndex: 0,
+          onDestinationSelected: (_) {},
+          tr: _tr,
+          bottom: true,
+        ),
+      ),
+    );
+    final glass = tester.widget<SystemGlass>(find.byType(SystemGlass));
+    final highlight = tester.widget<AnimatedPositioned>(
+      find.byType(AnimatedPositioned),
+    );
+    expect(highlight.top, highlight.bottom);
+    expect(highlight.top, 4);
+    final inset = tester.widget<Padding>(
+      find
+          .descendant(
+            of: find.byType(SystemGlass),
+            matching: find.byType(Padding),
+          )
+          .first,
+    );
+    final pad = inset.padding as EdgeInsets;
+    expect(pad.top, pad.bottom);
+    expect(pad.top, pad.left);
+    expect(pad.left, pad.right);
+    final box = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byType(AnimatedPositioned),
+        matching: find.byType(DecoratedBox),
+      ),
+    );
+    expect(
+      (box.decoration as BoxDecoration).borderRadius,
+      BorderRadius.circular(glass.radius),
+    );
+  });
+
   testWidgets('玻璃材质使用 bounded blur，高对比时退回实色', (tester) async {
     await tester.pumpWidget(
       _wrap(const SystemGlass(child: SizedBox(width: 80, height: 80))),
