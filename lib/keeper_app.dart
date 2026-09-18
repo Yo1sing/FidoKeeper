@@ -43,11 +43,19 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   final _search = TextEditingController();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
-  Locale get _appLocale => localeFromPreference(
-    _state?.preferences.locale ?? widget.preferences?.locale,
-  );
+  /// 跟随系统时为 null，交给 MaterialApp 按系统语言解析。
+  Locale? get _appLocale => localeFromPreference(_localeCode);
 
-  AppLocalizations get _l10n => lookupAppLocalizations(_appLocale);
+  String? get _localeCode =>
+      _state?.preferences.locale ?? widget.preferences?.locale;
+
+  /// 错误条、提示语在界面之外取文案，跟随系统时按系统语言解析。
+  AppLocalizations get _l10n => lookupAppLocalizations(
+    resolveAppLocale(
+      _localeCode,
+      WidgetsBinding.instance.platformDispatcher.locales,
+    ),
+  );
 
   ThemeMode get _themeMode =>
       switch (_state?.preferences.theme ?? widget.preferences?.theme) {

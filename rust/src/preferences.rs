@@ -23,7 +23,8 @@ fn location() -> Result<PathBuf, String> {
     }
 }
 
-pub(crate) const SUPPORTED_LOCALES: &[&str] = &["zh-CN", "zh-TW", "en-US"];
+/// 可保存的语言标识；"system" 表示跟随系统语言，由界面层解析。
+pub(crate) const SUPPORTED_LOCALES: &[&str] = &["system", "zh-CN", "zh-TW", "en-US"];
 
 fn decode(data: &[u8]) -> Result<Preferences, String> {
     let mut settings: Preferences =
@@ -80,5 +81,11 @@ mod tests {
         let traditional =
             decode(br#"{"theme":"light","locale":"zh-TW","hidden_authenticators":[]}"#).unwrap();
         assert_eq!(traditional.locale, "zh-TW");
+    }
+    #[test]
+    fn settings_accept_follow_system_locale() {
+        let system =
+            decode(br#"{"theme":"system","locale":"system","hidden_authenticators":[]}"#).unwrap();
+        assert_eq!(system.locale, "system");
     }
 }

@@ -178,6 +178,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
+  String get languageSystem => '跟随系统';
+
+  @override
   String get languageZh => '简体中文';
 
   @override
@@ -400,6 +403,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get language => '語言';
+
+  @override
+  String get languageSystem => '跟隨系統';
 
   @override
   String get languageZh => '简体中文';

@@ -423,6 +423,12 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get language;
 
+  /// No description provided for @languageSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow system'**
+  String get languageSystem;
+
   /// No description provided for @languageZh.
   ///
   /// In en, this message translates to:

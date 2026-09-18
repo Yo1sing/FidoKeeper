@@ -313,6 +313,66 @@ void main() {
     expect(find.text('Settings'), findsNothing);
   });
 
+  testWidgets('语言设为跟随系统时界面使用系统语言', (tester) async {
+    tester.platformDispatcher.localesTestValue = const [Locale('en', 'US')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    const system = Preferences(
+      locale: 'system',
+      theme: 'light',
+      hiddenAuthenticators: [],
+    );
+    final initialization = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    api.snapshot = api._copy(preferences: system);
+    await tester.pumpWidget(
+      const KeeperApp(desktop: false, preferences: system),
+    );
+    await tester.pump();
+    expect(find.text('Devices'), findsOneWidget);
+    expect(find.text('认证器'), findsNothing);
+    initialization.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Language'), findsOneWidget);
+  });
+
+  testWidgets('设置页可把语言切到跟随系统并立即换用系统语言', (tester) async {
+    tester.platformDispatcher.localesTestValue = const [
+      Locale.fromSubtags(
+        languageCode: 'zh',
+        scriptCode: 'Hant',
+        countryCode: 'TW',
+      ),
+    ];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    api.operation = (command) async {
+      if (command.kind == CommandKind.locale) {
+        api.snapshot = api._copy(
+          preferences: Preferences(
+            locale: command.value,
+            theme: api.snapshot.preferences.theme,
+            hiddenAuthenticators: api.snapshot.preferences.hiddenAuthenticators,
+          ),
+        );
+      }
+      return api.snapshot;
+    };
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('简体中文'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('跟随系统').last);
+    await tester.pumpAndSettle();
+    expect(api.last!.kind, CommandKind.locale);
+    expect(api.last!.value, 'system');
+    expect(find.text('設定'), findsOneWidget);
+    expect(find.text('語言'), findsOneWidget);
+    expect(find.text('设置'), findsNothing);
+  });
+
   testWidgets('忙碌时进入指纹页会在初始化后提交页面事件', (tester) async {
     final result = Completer<Snapshot>();
     api.initialize = () => result.future;

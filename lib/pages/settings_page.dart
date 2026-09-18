@@ -46,6 +46,10 @@ class SettingsPage extends StatelessWidget {
           initialValue: snapshot?.preferences.locale ?? 'zh-CN',
           decoration: InputDecoration(labelText: l10n.language),
           items: [
+            DropdownMenuItem(
+              value: systemLocalePreference,
+              child: Text(l10n.languageSystem),
+            ),
             DropdownMenuItem(value: 'zh-CN', child: Text(l10n.languageZh)),
             DropdownMenuItem(value: 'zh-TW', child: Text(l10n.languageZhTw)),
             DropdownMenuItem(value: 'en-US', child: Text(l10n.languageEn)),
