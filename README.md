@@ -66,7 +66,7 @@ XDG_CONFIG_HOME="$PWD/build/test-config" flutter test integration_test/simple_te
 
 ## 发布包
 
-推送 `main` 后由 `.github/workflows/build.yml` 并行产出：Linux 目录版与 deb / rpm / AppImage、Windows 目录版、Android 的 `arm64-v8a` 与 `armeabi-v7a` 两个 APK（release 构建沿用仓库配置里的 debug keystore）。
+推送 `main` 后由 `.github/workflows/build.yml` 并行产出：Linux 目录版与 deb / rpm / AppImage、Windows 目录版与 exe 安装包、Android 的 `arm64-v8a` 与 `armeabi-v7a` 两个 APK（release 构建沿用仓库配置里的 debug keystore）。
 
 本地打 Linux 包，需要 `dpkg-deb`、`rpmbuild` 和 [appimagetool](https://github.com/AppImage/appimagetool)：
 
@@ -74,6 +74,8 @@ XDG_CONFIG_HOME="$PWD/build/test-config" flutter test integration_test/simple_te
 flutter build linux --release
 packaging/linux/build_packages.sh build/linux/x64/release/bundle build/linux/packages
 ```
+
+本地打 Windows 安装包：先用 `flutter build windows --release` 生成 `build/windows/x64/runner/Release`，再用 [Inno Setup](https://jrsoftware.org/isinfo.php) 编译 `packaging/windows/fidokeeper.iss`，输出到 `build/windows/packages/`。
 
 三种包都依赖系统的 GTK3 与 libfido2（deb、rpm 已在元数据里声明依赖，AppImage 需要目标机自备）。deb 与 rpm 安装到 `/opt/fidokeeper`，其中 `lib/` 和 `data/` 必须与可执行文件保持同级：二进制按 `$ORIGIN/lib` 找动态库，Flutter 引擎按可执行文件位置找 `data/`。
 

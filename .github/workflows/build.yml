@@ -138,10 +138,54 @@ jobs:
       # fido2/cbor/crypto/zlib 运行库由 windows/cmake/fido_runtime.cmake 从 dll/ 复制到 EXE 旁
       - run: flutter build windows --release --build-name "$env:APP_VERSION_NAME" --build-number "$env:BUILD_NUMBER"
 
+      - name: 生成 Windows exe 安装包
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $iscc = Get-Command iscc.exe -ErrorAction SilentlyContinue
+          if ($iscc) { $iscc = $iscc.Source }
+          if (-not $iscc) {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+            )
+            $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = Get-ChildItem "${env:ProgramFiles(x86)}" -Filter 'ISCC.exe' -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $iscc) { throw '找不到 Inno Setup 的 ISCC.exe' }
+
+          $root = (Resolve-Path '.').Path
+          $sourceDir = (Resolve-Path 'build/windows/x64/runner/Release').Path
+          $outputDir = Join-Path (Resolve-Path 'build/windows').Path 'packages'
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+          $isccArgs = @(
+            '/Qp',
+            "/DSourceDir=$sourceDir",
+            "/DOutputDir=$outputDir",
+            "/DIconFile=$root\windows\runner\resources\app_icon.ico",
+            "/DAppVersion=$env:APP_VERSION_NAME",
+            "/DBuildNumber=$env:BUILD_NUMBER",
+            'packaging/windows/fidokeeper.iss'
+          )
+          & $iscc @isccArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - uses: actions/upload-artifact@v4
         with:
           name: fidokeeper-windows-amd64
           path: build/windows/x64/runner/Release
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fidokeeper-windows-amd64-installer
+          path: build/windows/packages/*.exe
           if-no-files-found: error
 
   android:
