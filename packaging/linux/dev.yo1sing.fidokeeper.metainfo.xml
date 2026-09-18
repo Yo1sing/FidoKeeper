@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.yo1sing.fidokeeper</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>FidoKeeper</name>
+  <summary>Manage FIDO2 security keys</summary>
+  <summary xml:lang="zh_CN">FIDO2 安全密钥管理工具</summary>
+  <summary xml:lang="zh_TW">FIDO2 安全金鑰管理工具</summary>
+  <description>
+    <p>FidoKeeper manages FIDO2 authenticators over USB HID and NFC: browsing and deleting credentials, changing the PIN, and enrolling or removing fingerprint templates.</p>
+    <p xml:lang="zh_CN">FidoKeeper 通过 USB HID 与 NFC 管理 FIDO2 认证器：查看和删除凭证、更改 PIN、录入或删除指纹模板。</p>
+  </description>
+  <launchable type="desktop-id">dev.yo1sing.fidokeeper.desktop</launchable>
+  <url type="homepage">https://github.com/Yo1sing/FidoKeeper</url>
+  <developer id="dev.yo1sing">
+    <name>Yo1sing</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+</component>

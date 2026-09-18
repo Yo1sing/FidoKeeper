@@ -3,7 +3,7 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <uses-permission android:name="android.permission.NFC" />
     <application
-        android:label="fidokeeper"
+        android:label="FidoKeeper"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

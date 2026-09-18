@@ -52,6 +52,19 @@ XDG_CONFIG_HOME="$PWD/build/test-config" flutter test integration_test/simple_te
 
 测试不会修改真实设备的凭证、PIN 或指纹，也不会重置设备。真实硬件写入与 Windows/macOS 运行仍需在对应环境验证。
 
+## 发布包
+
+推送 `main` 后由 `.github/workflows/build.yml` 并行产出：Linux 目录版与 deb / rpm / AppImage、Windows 目录版、Android 的 `arm64-v8a` 与 `armeabi-v7a` 两个 APK（release 构建沿用仓库配置里的 debug keystore）。
+
+本地打 Linux 包，需要 `dpkg-deb`、`rpmbuild` 和 [appimagetool](https://github.com/AppImage/appimagetool)：
+
+```sh
+flutter build linux --release
+packaging/linux/build_packages.sh build/linux/x64/release/bundle build/linux/packages
+```
+
+三种包都依赖系统的 GTK3 与 libfido2（deb、rpm 已在元数据里声明依赖，AppImage 需要目标机自备）。deb 与 rpm 安装到 `/opt/fidokeeper`，其中 `lib/` 和 `data/` 必须与可执行文件保持同级：二进制按 `$ORIGIN/lib` 找动态库，Flutter 引擎按可执行文件位置找 `data/`。
+
 ## 配置
 
 配置保存到 `FidoKeeper/settings.json`。上级目录为 Linux 的 `$XDG_CONFIG_HOME` 或 `~/.config`、macOS 的 `~/Library/Application Support`、Windows 的 `%LOCALAPPDATA%`。不保存 PIN 或凭证内容。

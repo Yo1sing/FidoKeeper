@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=FidoKeeper
+GenericName=FIDO2 security key manager
+GenericName[zh_CN]=FIDO2 安全密钥管理工具
+GenericName[zh_TW]=FIDO2 安全金鑰管理工具
+Comment=Manage credentials, PIN and fingerprints on FIDO2 authenticators
+Comment[zh_CN]=管理 FIDO2 认证器上的凭证、PIN 与指纹
+Comment[zh_TW]=管理 FIDO2 認證器上的憑證、PIN 與指紋
+Exec=fidokeeper
+Icon=dev.yo1sing.fidokeeper
+Terminal=false
+Categories=Utility;Security;
+Keywords=FIDO;FIDO2;U2F;security key;passwordless;
+Keywords[zh_CN]=安全密钥;认证器;凭证;指纹;
+StartupWMClass=dev.yo1sing.fidokeeper

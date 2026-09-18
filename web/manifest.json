@@ -1,6 +1,6 @@
 {
-    "name": "fidokeeper",
-    "short_name": "fidokeeper",
+    "name": "FidoKeeper",
+    "short_name": "FidoKeeper",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "fidokeeper" "\0"
+            VALUE "CompanyName", "dev.yo1sing" "\0"
+            VALUE "FileDescription", "FidoKeeper" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "fidokeeper" "\0"
+            VALUE "InternalName", "FidoKeeper" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.yo1sing All rights reserved." "\0"
             VALUE "OriginalFilename", "fidokeeper.exe" "\0"
-            VALUE "ProductName", "fidokeeper" "\0"
+            VALUE "ProductName", "FidoKeeper" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
