@@ -1,4 +1,4 @@
-package com.example.fidokeeper
+package dev.yo1singfidokeeper
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -27,7 +27,7 @@ class FidoHost(private val activity: MainActivity) {
             System.loadLibrary("rust_lib_fidokeeper")
         }
 
-        private const val USB_PERMISSION = "com.example.fidokeeper.USB_PERMISSION"
+        private const val USB_PERMISSION = "dev.yo1singfidokeeper.USB_PERMISSION"
         private val FIDO_AID =
             byteArrayOf(0xA0.toByte(), 0x00, 0x00, 0x06, 0x47, 0x2F, 0x00, 0x01)
 

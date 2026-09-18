@@ -1,4 +1,4 @@
-package com.example.fidokeeper
+package dev.yo1singfidokeeper
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
