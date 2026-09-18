@@ -1,6 +1,19 @@
 {
   "@@locale": "zh_TW",
   "waitForCurrentOperation": "請等待目前操作完成",
+  "closing": "正在關閉…",
+  "closingWaitOperation": "正在等待「{operation}」完成，完成後會自動結束。",
+  "@closingWaitOperation": {
+    "placeholders": {
+      "operation": {
+        "type": "String"
+      }
+    }
+  },
+  "closingWaitAny": "正在等待目前操作完成，完成後會自動結束。",
+  "operationScan": "掃描認證器",
+  "operationVerifyPin": "驗證 PIN",
+  "operationReadFingerprints": "讀取指紋",
   "operationCompleted": "操作成功",
   "dismiss": "關閉",
   "close": "關閉",

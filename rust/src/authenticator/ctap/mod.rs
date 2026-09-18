@@ -147,7 +147,7 @@ impl<S: DeviceSource> CtapAuthenticator<S> {
 }
 
 impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
-    fn discover(&mut self) -> Result<Vec<DeviceSummary>, String> {
+    fn discover(&mut self, cancelled: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String> {
         let listed = self.source.enumerate()?;
         if listed.is_empty() {
             return Ok(vec![]);
@@ -155,6 +155,7 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         let mut devices = Vec::new();
         let mut last_error = None;
         for (path, label) in listed {
+            super::ensure_running(cancelled)?;
             match self.probe(&path, label) {
                 Ok(device) => devices.push(device),
                 Err(error) => last_error = Some(error),
@@ -167,7 +168,13 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         }
     }
 
-    fn inventory(&mut self, path: &str, pin: &str) -> Result<Inventory, String> {
+    fn inventory(
+        &mut self,
+        path: &str,
+        pin: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Inventory, String> {
+        super::ensure_running(cancelled)?;
         let mut session = self.session(path)?;
         if !session.info.credman {
             return Err("认证器不支持凭证管理".into());
@@ -181,6 +188,7 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
             .ok_or("剩余容量无效")?;
         let mut credentials = Vec::new();
         for rp in session.enumerate_rps(&proto, &token)? {
+            super::ensure_running(cancelled)?;
             let rp_id = cbor::map_get_text(&rp.entity, "id");
             if rp_id.is_empty() {
                 return Err("设备返回空网站标识".into());
@@ -755,7 +763,7 @@ mod tests {
         let mut authenticator = CtapAuthenticator::new(MockSource {
             info: info_payload(),
         });
-        let devices = authenticator.discover().unwrap();
+        let devices = authenticator.discover(&|| false).unwrap();
         assert_eq!(devices.len(), 1);
         assert_eq!(devices[0].label, "Mock Key");
         assert_eq!(devices[0].protocol, "CTAP2 / FIDO2");

@@ -1,6 +1,19 @@
 {
   "@@locale": "en",
   "waitForCurrentOperation": "Wait for the current operation",
+  "closing": "Closing…",
+  "closingWaitOperation": "Waiting for “{operation}” to finish. The app closes as soon as it completes.",
+  "@closingWaitOperation": {
+    "placeholders": {
+      "operation": {
+        "type": "String"
+      }
+    }
+  },
+  "closingWaitAny": "Waiting for the current operation to finish. The app closes as soon as it completes.",
+  "operationScan": "Scanning authenticators",
+  "operationVerifyPin": "Verifying PIN",
+  "operationReadFingerprints": "Reading fingerprints",
   "operationCompleted": "Operation completed",
   "dismiss": "Dismiss",
   "close": "Close",

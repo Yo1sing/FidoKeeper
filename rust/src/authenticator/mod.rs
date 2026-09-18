@@ -19,8 +19,13 @@ pub struct Inventory {
 }
 
 pub trait Authenticator {
-    fn discover(&mut self) -> Result<Vec<DeviceSummary>, String>;
-    fn inventory(&mut self, path: &str, pin: &str) -> Result<Inventory, String>;
+    fn discover(&mut self, cancelled: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String>;
+    fn inventory(
+        &mut self,
+        path: &str,
+        pin: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Inventory, String>;
     fn remove_credential(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String>;
     fn update_pin(&mut self, path: &str, current: &str, replacement: &str) -> Result<(), String>;
     fn fingerprints(&mut self, path: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String>;
@@ -86,8 +91,54 @@ struct Session {
     api: &'static RawApi,
     opened: bool,
 }
+/// 真实读写操作的设备 I/O 上限。
+const DEVICE_TIMEOUT_MS: i32 = 30_000;
+/// 扫描时只探测能力，不需要等满读写上限；设备无响应时关闭不必久等。
+const DISCOVERY_TIMEOUT_MS: i32 = 5_000;
+const SHUTDOWN_ERROR: &str = "应用正在关闭";
+
+/// 关闭请求期间停止后续设备调用：等待时间只由当前一次调用决定，而不是剩余所有设备。
+fn ensure_running(cancelled: &dyn Fn() -> bool) -> Result<(), String> {
+    if cancelled() {
+        return Err(SHUTDOWN_ERROR.to_owned());
+    }
+    Ok(())
+}
+
+/// 逐台探测设备：被取消时立即停止，打不开的设备跳过，全都打不开时给出带原因和权限提示的错误。
+fn probe_devices(
+    candidates: Vec<(String, String)>,
+    cancelled: &dyn Fn() -> bool,
+    mut probe: impl FnMut(&str, &str) -> Result<DeviceSummary, String>,
+) -> Result<Vec<DeviceSummary>, String> {
+    let mut devices = Vec::new();
+    let mut failure: Option<String> = None;
+    for (path, label) in candidates {
+        ensure_running(cancelled)?;
+        match probe(&path, &label) {
+            Ok(device) => devices.push(device),
+            Err(error) => {
+                if failure.is_none() {
+                    failure = Some(error);
+                }
+            }
+        }
+    }
+    if devices.is_empty() {
+        if let Some(error) = failure {
+            return Err(format!(
+                "无法访问认证器，请以管理员身份运行或检查设备权限：{error}"
+            ));
+        }
+    }
+    Ok(devices)
+}
+
 impl Session {
     fn open(path: &str) -> Result<Self, String> {
+        Self::open_with_timeout(path, DEVICE_TIMEOUT_MS)
+    }
+    fn open_with_timeout(path: &str, timeout_ms: i32) -> Result<Self, String> {
         let api = RawApi::get()?;
         let path = CString::new(path).map_err(|_| "设备路径包含空字符")?;
         unsafe {
@@ -96,7 +147,7 @@ impl Session {
                 api,
                 opened: false,
             };
-            api.check((api.fido_dev_set_timeout)(session.raw(), 30_000))?;
+            api.check((api.fido_dev_set_timeout)(session.raw(), timeout_ms))?;
             api.check((api.fido_dev_open)(session.raw(), path.as_ptr()))?;
             session.opened = true;
             Ok(session)
@@ -199,7 +250,7 @@ unsafe fn identifier(data: *const u8, len: usize) -> Result<String, String> {
 }
 
 impl Authenticator for NativeAuthenticator {
-    fn discover(&mut self) -> Result<Vec<DeviceSummary>, String> {
+    fn discover(&mut self, cancelled: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String> {
         let api = RawApi::get()?;
         unsafe {
             let entries = Manifest {
@@ -213,29 +264,33 @@ impl Authenticator for NativeAuthenticator {
                 entries.capacity,
                 &mut count,
             ))?;
-            let mut result = Vec::new();
+            let mut candidates = Vec::new();
             for index in 0..count.min(entries.capacity) {
                 let entry = (api.fido_dev_info_ptr)(entries.raw.as_ptr(), index);
                 if entry.is_null() {
                     return Err("设备列表包含无效记录".into());
                 }
-                let path = text((api.fido_dev_info_path)(entry));
-                let label = format!(
-                    "{} {}",
-                    text((api.fido_dev_info_manufacturer_string)(entry)),
-                    text((api.fido_dev_info_product_string)(entry))
-                )
-                .trim()
-                .to_owned();
-                let session = Session::open(&path)?;
+                candidates.push((
+                    text((api.fido_dev_info_path)(entry)),
+                    format!(
+                        "{} {}",
+                        text((api.fido_dev_info_manufacturer_string)(entry)),
+                        text((api.fido_dev_info_product_string)(entry))
+                    )
+                    .trim()
+                    .to_owned(),
+                ));
+            }
+            probe_devices(candidates, cancelled, |path, label| {
+                let session = Session::open_with_timeout(path, DISCOVERY_TIMEOUT_MS)?;
                 let ctap2 = (api.fido_dev_is_fido2)(session.raw());
-                result.push(DeviceSummary {
-                    transport: crate::api::models::Transport::from_path(&path),
-                    path,
+                Ok(DeviceSummary {
+                    transport: crate::api::models::Transport::from_path(path),
+                    path: path.to_owned(),
                     label: if label.is_empty() {
                         "FIDO 认证器".into()
                     } else {
-                        label
+                        label.to_owned()
                     },
                     protocol: if ctap2 {
                         "CTAP2 / FIDO2"
@@ -246,12 +301,17 @@ impl Authenticator for NativeAuthenticator {
                     credential_management: ctap2 && (api.fido_dev_supports_credman)(session.raw()),
                     pin: ctap2 && (api.fido_dev_supports_pin)(session.raw()),
                     fingerprint: ctap2 && session.bio_supported(),
-                });
-            }
-            Ok(result)
+                })
+            })
         }
     }
-    fn inventory(&mut self, path: &str, pin: &str) -> Result<Inventory, String> {
+    fn inventory(
+        &mut self,
+        path: &str,
+        pin: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Inventory, String> {
+        ensure_running(cancelled)?;
         let pin = secret(pin)?;
         let session = Session::open(path)?;
         let api = session.api;
@@ -276,6 +336,8 @@ impl Authenticator for NativeAuthenticator {
             ))?;
             let mut credentials = Vec::new();
             for site in 0..(api.fido_credman_rp_count)(sites.raw()) {
+                // 每个网站一次设备调用，逐个检查关闭请求，避免读完所有网站才释放锁。
+                ensure_running(cancelled)?;
                 let rp_id = text((api.fido_credman_rp_id)(sites.raw(), site));
                 if rp_id.is_empty() {
                     return Err("设备返回空网站标识".into());
@@ -491,5 +553,68 @@ mod tests {
     #[test]
     fn native_symbols_are_available() {
         RawApi::get().unwrap();
+    }
+    fn candidate(path: &str) -> (String, String) {
+        (path.to_owned(), path.to_owned())
+    }
+    fn summary(path: &str) -> DeviceSummary {
+        DeviceSummary {
+            transport: crate::api::models::Transport::from_path(path),
+            label: path.to_owned(),
+            path: path.to_owned(),
+            protocol: "CTAP2".to_owned(),
+            credential_management: true,
+            pin: true,
+            fingerprint: false,
+        }
+    }
+    #[test]
+    fn discovery_stops_before_probing_when_cancelled() {
+        let mut probed = 0;
+        let error = probe_devices(
+            vec![candidate("a"), candidate("b")],
+            &|| true,
+            |path, _| {
+                probed += 1;
+                Ok(summary(path))
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error, "应用正在关闭");
+        assert_eq!(probed, 0);
+    }
+    #[test]
+    fn discovery_skips_devices_it_cannot_open() {
+        let devices = probe_devices(
+            vec![candidate("a"), candidate("b"), candidate("c")],
+            &|| false,
+            |path, _| {
+                if path == "b" {
+                    Err("访问被拒绝".to_owned())
+                } else {
+                    Ok(summary(path))
+                }
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            devices.iter().map(|d| d.path.as_str()).collect::<Vec<_>>(),
+            ["a", "c"]
+        );
+    }
+    #[test]
+    fn discovery_reports_permission_hint_when_nothing_is_accessible() {
+        let error = probe_devices(vec![candidate("a")], &|| false, |_, _| {
+            Err("访问被拒绝".to_owned())
+        })
+        .unwrap_err();
+        assert!(error.contains("访问被拒绝"), "{error}");
+        assert!(error.contains("管理员"), "{error}");
+        assert!(error.contains("设备权限"), "{error}");
+    }
+    #[test]
+    fn discovery_reports_first_device_when_none_found() {
+        let devices = probe_devices(vec![], &|| false, |path, _| Ok(summary(path))).unwrap();
+        assert!(devices.is_empty());
     }
 }

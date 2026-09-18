@@ -13,6 +13,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waitForCurrentOperation => 'Wait for the current operation';
 
   @override
+  String get closing => 'Closing…';
+
+  @override
+  String closingWaitOperation(String operation) {
+    return 'Waiting for “$operation” to finish. The app closes as soon as it completes.';
+  }
+
+  @override
+  String get closingWaitAny =>
+      'Waiting for the current operation to finish. The app closes as soon as it completes.';
+
+  @override
+  String get operationScan => 'Scanning authenticators';
+
+  @override
+  String get operationVerifyPin => 'Verifying PIN';
+
+  @override
+  String get operationReadFingerprints => 'Reading fingerprints';
+
+  @override
   String get operationCompleted => 'Operation completed';
 
   @override

@@ -13,6 +13,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get waitForCurrentOperation => '请等待当前操作完成';
 
   @override
+  String get closing => '正在关闭…';
+
+  @override
+  String closingWaitOperation(String operation) {
+    return '正在等待「$operation」完成，完成后会自动退出。';
+  }
+
+  @override
+  String get closingWaitAny => '正在等待当前操作完成，完成后会自动退出。';
+
+  @override
+  String get operationScan => '扫描认证器';
+
+  @override
+  String get operationVerifyPin => '验证 PIN';
+
+  @override
+  String get operationReadFingerprints => '读取指纹';
+
+  @override
   String get operationCompleted => '操作成功';
 
   @override
@@ -238,6 +258,26 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get waitForCurrentOperation => '請等待目前操作完成';
+
+  @override
+  String get closing => '正在關閉…';
+
+  @override
+  String closingWaitOperation(String operation) {
+    return '正在等待「$operation」完成，完成後會自動結束。';
+  }
+
+  @override
+  String get closingWaitAny => '正在等待目前操作完成，完成後會自動結束。';
+
+  @override
+  String get operationScan => '掃描認證器';
+
+  @override
+  String get operationVerifyPin => '驗證 PIN';
+
+  @override
+  String get operationReadFingerprints => '讀取指紋';
 
   @override
   String get operationCompleted => '操作成功';

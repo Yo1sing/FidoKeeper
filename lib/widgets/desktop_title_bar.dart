@@ -57,10 +57,11 @@ class _DesktopTitleBarState extends State<DesktopTitleBar> with WindowListener {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 18,
-                          color: theme.colorScheme.primary,
+                        Image.asset(
+                          'assets/icon/fidokeeper-icon-v3.png',
+                          width: 18,
+                          height: 18,
+                          filterQuality: FilterQuality.medium,
                         ),
                         const SizedBox(width: 8),
                         Text('FidoKeeper', style: theme.textTheme.labelLarge),

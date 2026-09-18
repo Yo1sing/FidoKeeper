@@ -24,6 +24,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 不改 pubspec（它仍是版本名的唯一来源），构建时注入：
+      #   version name ← pubspec；build number ← 运行号（单调递增，Android versionCode 也用它）；
+      #   Linux 包的版本再带短 sha，下载到手也能看出是哪个提交构建的。
+      # 注意 --build-name 不能带 `+`：Flutter 会把 name 与 number 拼成 "name+number" 再按 semver
+      # 解析，带 `+` 会解析失败并静默退回 1.0.0 / build 0。
+      - name: 计算构建版本
+        shell: bash
+        run: |
+          version_name="$(sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' pubspec.yaml | head -1)"
+          {
+            echo "APP_VERSION_NAME=$version_name"
+            echo "BUILD_NUMBER=${{ github.run_number }}"
+            echo "PACKAGE_VERSION=${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### 构建版本"
+            echo "- 版本名：$version_name"
+            echo "- 构建号（Android versionCode / iOS CFBundleVersion）：${{ github.run_number }}"
+            echo "- Linux 包版本：${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # build.rs 在 Linux 上要求 libfido2 >= 1.13.0（Ubuntu 24.04 提供 1.14.0）
       # rpm/binutils/file 供 packaging/linux/build_packages.sh 打 deb、rpm、AppImage
       - name: 安装系统依赖
@@ -46,7 +67,7 @@ jobs:
           workspaces: rust
 
       - run: flutter pub get
-      - run: flutter build linux --release
+      - run: flutter build linux --release --build-name "$APP_VERSION_NAME" --build-number "$BUILD_NUMBER"
 
       - name: 下载 appimagetool
         run: |
@@ -58,6 +79,7 @@ jobs:
         run: packaging/linux/build_packages.sh build/linux/x64/release/bundle build/linux/packages
         env:
           APPIMAGETOOL: ${{ runner.temp }}/appimagetool
+          VERSION: ${{ env.PACKAGE_VERSION }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -80,6 +102,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 不改 pubspec（它仍是版本名的唯一来源），构建时注入：
+      #   version name ← pubspec；build number ← 运行号（单调递增，Android versionCode 也用它）；
+      #   Linux 包的版本再带短 sha，下载到手也能看出是哪个提交构建的。
+      # 注意 --build-name 不能带 `+`：Flutter 会把 name 与 number 拼成 "name+number" 再按 semver
+      # 解析，带 `+` 会解析失败并静默退回 1.0.0 / build 0。
+      - name: 计算构建版本
+        shell: bash
+        run: |
+          version_name="$(sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' pubspec.yaml | head -1)"
+          {
+            echo "APP_VERSION_NAME=$version_name"
+            echo "BUILD_NUMBER=${{ github.run_number }}"
+            echo "PACKAGE_VERSION=${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### 构建版本"
+            echo "- 版本名：$version_name"
+            echo "- 构建号（Android versionCode / iOS CFBundleVersion）：${{ github.run_number }}"
+            echo "- Linux 包版本：${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -93,7 +136,7 @@ jobs:
 
       - run: flutter pub get
       # fido2/cbor/crypto/zlib 运行库由 windows/cmake/fido_runtime.cmake 从 dll/ 复制到 EXE 旁
-      - run: flutter build windows --release
+      - run: flutter build windows --release --build-name "$env:APP_VERSION_NAME" --build-number "$env:BUILD_NUMBER"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -106,6 +149,27 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      # 不改 pubspec（它仍是版本名的唯一来源），构建时注入：
+      #   version name ← pubspec；build number ← 运行号（单调递增，Android versionCode 也用它）；
+      #   Linux 包的版本再带短 sha，下载到手也能看出是哪个提交构建的。
+      # 注意 --build-name 不能带 `+`：Flutter 会把 name 与 number 拼成 "name+number" 再按 semver
+      # 解析，带 `+` 会解析失败并静默退回 1.0.0 / build 0。
+      - name: 计算构建版本
+        shell: bash
+        run: |
+          version_name="$(sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' pubspec.yaml | head -1)"
+          {
+            echo "APP_VERSION_NAME=$version_name"
+            echo "BUILD_NUMBER=${{ github.run_number }}"
+            echo "PACKAGE_VERSION=${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### 构建版本"
+            echo "- 版本名：$version_name"
+            echo "- 构建号（Android versionCode / iOS CFBundleVersion）：${{ github.run_number }}"
+            echo "- Linux 包版本：${version_name}+${{ github.run_number }}.$(git rev-parse --short HEAD)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # 与本地一致的 JDK 21，Gradle 9.3.1 + AGP 9.1 需要 17 以上
       - uses: actions/setup-java@v4
@@ -135,7 +199,7 @@ jobs:
 
       - run: flutter pub get
       # 必须显式指定 ABI：默认只打当前连接设备那一种，且每个 ABI 需要各自的 Rust 产物
-      - run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+      - run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --build-name "$APP_VERSION_NAME" --build-number "$BUILD_NUMBER"
 
       - uses: actions/upload-artifact@v4
         with:
