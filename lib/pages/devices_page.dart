@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
 import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
@@ -14,7 +15,6 @@ class DevicesPage extends StatelessWidget {
     required this.busy,
     required this.scanning,
     required this.closing,
-    required this.tr,
     required this.onAction,
     required this.onPrompt,
   });
@@ -23,7 +23,6 @@ class DevicesPage extends StatelessWidget {
   final bool busy;
   final bool scanning;
   final bool closing;
-  final Translate tr;
   final RunAction onAction;
   final PromptOperation onPrompt;
 
@@ -31,6 +30,7 @@ class DevicesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final devices = snapshot?.devices ?? const <DeviceSummary>[];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -51,7 +51,7 @@ class DevicesPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(padding, 20, padding, 24),
               child: snapshot != null && devices.isEmpty
-                  ? _EmptyState(tr: tr)
+                  ? const _EmptyState()
                   : SizedBox(
                       width: inner,
                       child: SingleChildScrollView(
@@ -69,11 +69,10 @@ class DevicesPage extends StatelessWidget {
                                   connected:
                                       snapshot?.active?.path == device.path,
                                   locked: _locked,
-                                  tr: tr,
                                   onConnect: () => onPrompt(
                                     context,
                                     backend.CommandKind.connect,
-                                    tr('选择认证器', 'Select authenticator'),
+                                    l10n.selectAuthenticator,
                                     value: device.path,
                                     detail: device.label,
                                   ),
@@ -86,10 +85,11 @@ class DevicesPage extends StatelessWidget {
                                   onReset: () => onPrompt(
                                     context,
                                     backend.CommandKind.reset,
-                                    tr('重置认证器', 'Reset authenticator'),
+                                    l10n.resetAuthenticator,
                                     value: device.path,
-                                    detail:
-                                        '${device.label}\n${tr('此操作会永久清除全部凭证、PIN 和指纹，无法撤销。请重新插入设备后立即确认，并按设备提示触碰。', 'This permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.')}',
+                                    detail: l10n.resetAuthenticatorDetail(
+                                      device.label,
+                                    ),
                                   ),
                                   onDetails: () =>
                                       _showDetails(context, device),
@@ -119,6 +119,7 @@ class DevicesPage extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
+        final l10n = dialogContext.l10n;
         final scheme = Theme.of(dialogContext).colorScheme;
         Widget row(String label, String value, {bool selectable = false}) {
           return Padding(
@@ -139,9 +140,6 @@ class DevicesPage extends StatelessWidget {
           );
         }
 
-        final supported = tr('支持', 'Supported');
-        final unsupported = tr('不支持', 'Not supported');
-
         return AlertDialog(
           title: Text(device.label),
           content: SizedBox(
@@ -151,17 +149,19 @@ class DevicesPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  row(tr('传输', 'Transport'), _transportLabel(tr, transport)),
-                  row(tr('协议', 'Protocol'), device.protocol),
-                  row(tr('路径', 'Path'), device.path, selectable: true),
+                  row(l10n.transport, _transportLabel(l10n, transport)),
+                  row(l10n.protocol, device.protocol),
+                  row(l10n.path, device.path, selectable: true),
                   row(
-                    tr('凭证管理', 'Credential management'),
-                    device.credentialManagement ? supported : unsupported,
+                    l10n.credentialManagement,
+                    device.credentialManagement
+                        ? l10n.supported
+                        : l10n.notSupported,
                   ),
-                  row('PIN', device.pin ? supported : unsupported),
+                  row('PIN', device.pin ? l10n.supported : l10n.notSupported),
                   row(
-                    tr('指纹', 'Fingerprint'),
-                    device.fingerprint ? supported : unsupported,
+                    l10n.fingerprint,
+                    device.fingerprint ? l10n.supported : l10n.notSupported,
                   ),
                 ],
               ),
@@ -170,7 +170,7 @@ class DevicesPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(tr('关闭', 'Close')),
+              child: Text(l10n.close),
             ),
           ],
         );
@@ -180,14 +180,13 @@ class DevicesPage extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.tr});
-
-  final Translate tr;
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = context.l10n;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -204,19 +203,13 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              tr(
-                '等待插入 USB 密钥或贴上 NFC 密钥',
-                'Insert a USB key or hold an NFC key',
-              ),
+              l10n.waitForUsbOrNfc,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              tr(
-                '未发现可用认证器；请检查连接、设备权限或隐藏列表。',
-                'No authenticators found. Check connections, device permissions, or hidden devices.',
-              ),
+              l10n.noAuthenticatorsFound,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: scheme.onSurfaceVariant,
@@ -254,7 +247,6 @@ class _DeviceCard extends StatelessWidget {
     required this.device,
     required this.connected,
     required this.locked,
-    required this.tr,
     required this.onConnect,
     required this.onDisconnect,
     required this.onHide,
@@ -265,7 +257,6 @@ class _DeviceCard extends StatelessWidget {
   final DeviceSummary device;
   final bool connected;
   final bool locked;
-  final Translate tr;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
   final VoidCallback onHide;
@@ -276,6 +267,7 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = context.l10n;
     final transport = device.transport;
 
     return Material(
@@ -316,28 +308,28 @@ class _DeviceCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   ActionMenuButton(
-                    tooltip: tr('更多操作', 'More actions'),
+                    tooltip: l10n.moreActions,
                     enabled: !locked,
                     items: [
                       ActionMenuItem(
                         value: 'details',
-                        label: tr('详情', 'Details'),
+                        label: l10n.details,
                         icon: Icons.info_outline,
                       ),
                       if (connected)
                         ActionMenuItem(
                           value: 'disconnect',
-                          label: tr('断开连接', 'Disconnect'),
+                          label: l10n.disconnect,
                           icon: Icons.link_off,
                         ),
                       ActionMenuItem(
                         value: 'hide',
-                        label: tr('隐藏设备', 'Hide device'),
+                        label: l10n.hideDevice,
                         icon: Icons.visibility_off_outlined,
                       ),
                       ActionMenuItem(
                         value: 'reset',
-                        label: tr('重置设备…', 'Reset device…'),
+                        label: l10n.resetDevice,
                         icon: Icons.restart_alt,
                         destructive: true,
                       ),
@@ -368,9 +360,7 @@ class _DeviceCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                connected
-                    ? tr('已解锁', 'Unlocked')
-                    : tr('轻触以选择并输入 PIN', 'Tap to select and enter PIN'),
+                connected ? l10n.unlocked : l10n.tapToSelectAndEnterPin,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: connected ? scheme.primary : scheme.onSurfaceVariant,
                 ),
@@ -382,7 +372,7 @@ class _DeviceCard extends StatelessWidget {
                 children: [
                   _MetaChip(
                     icon: _transportIcon(transport),
-                    label: _transportLabel(tr, transport),
+                    label: _transportLabel(l10n, transport),
                   ),
                   _MetaChip(icon: Icons.hub_outlined, label: device.protocol),
                   if (device.pin)
@@ -390,13 +380,10 @@ class _DeviceCard extends StatelessWidget {
                   if (device.credentialManagement)
                     _MetaChip(
                       icon: Icons.password_outlined,
-                      label: tr('凭证管理', 'Credential management'),
+                      label: l10n.credentialManagement,
                     ),
                   if (device.fingerprint)
-                    _MetaChip(
-                      icon: Icons.fingerprint,
-                      label: tr('指纹', 'Fingerprint'),
-                    ),
+                    _MetaChip(icon: Icons.fingerprint, label: l10n.fingerprint),
                 ],
               ),
               if (connected) ...[
@@ -405,7 +392,7 @@ class _DeviceCard extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: OutlinedButton(
                     onPressed: locked ? null : onDisconnect,
-                    child: Text(tr('断开连接', 'Disconnect')),
+                    child: Text(l10n.disconnect),
                   ),
                 ),
               ],
@@ -446,9 +433,9 @@ IconData _transportIcon(Transport transport) => switch (transport) {
   Transport.hid => Icons.key,
 };
 
-String _transportLabel(Translate tr, Transport transport) =>
+String _transportLabel(AppLocalizations l10n, Transport transport) =>
     switch (transport) {
       Transport.usb => 'USB',
       Transport.nfc => 'NFC',
-      Transport.hid => tr('本机 HID', 'Local HID'),
+      Transport.hid => l10n.localHid,
     };

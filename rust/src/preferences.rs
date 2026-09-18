@@ -23,10 +23,12 @@ fn location() -> Result<PathBuf, String> {
     }
 }
 
+pub(crate) const SUPPORTED_LOCALES: &[&str] = &["zh-CN", "zh-TW", "en-US"];
+
 fn decode(data: &[u8]) -> Result<Preferences, String> {
     let mut settings: Preferences =
         serde_json::from_slice(data).map_err(|_| "设置文件格式损坏".to_owned())?;
-    if !["zh-CN", "en-US"].contains(&settings.locale.as_str()) {
+    if !SUPPORTED_LOCALES.contains(&settings.locale.as_str()) {
         settings.locale = "zh-CN".into();
     }
     if !["light", "dark", "system"].contains(&settings.theme.as_str()) {
@@ -72,7 +74,11 @@ mod tests {
     fn settings_validate_defaults_and_deduplicate() {
         let p = decode(br#"{"theme":"bad","locale":"bad","hidden_authenticators":[{"path":"a","label":"A"},{"path":"a","label":"B"}]}"#).unwrap();
         assert_eq!(p.theme, "system");
+        assert_eq!(p.locale, "zh-CN");
         assert_eq!(p.hidden_authenticators.len(), 1);
         assert!(decode(b"invalid").is_err());
+        let traditional =
+            decode(br#"{"theme":"light","locale":"zh-TW","hidden_authenticators":[]}"#).unwrap();
+        assert_eq!(traditional.locale, "zh-TW");
     }
 }

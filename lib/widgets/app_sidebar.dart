@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../ui/callbacks.dart';
+import '../l10n/locale_preference.dart';
 import 'system_glass.dart';
 
 const _sideItemHeight = 44.0;
@@ -19,7 +19,6 @@ class AppSidebar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.tr,
     this.onScanDevices,
     this.scanEnabled = true,
     this.scanning = false,
@@ -28,7 +27,6 @@ class AppSidebar extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final Translate tr;
   final VoidCallback? onScanDevices;
   final bool scanEnabled;
   final bool scanning;
@@ -39,16 +37,17 @@ class AppSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     final destinations = [
-      (Icons.key_outlined, Icons.key, tr('认证器', 'Devices')),
-      (Icons.password_outlined, Icons.password, tr('凭证', 'Credentials')),
-      (Icons.fingerprint_outlined, Icons.fingerprint, tr('指纹', 'Fingerprints')),
-      (Icons.settings_outlined, Icons.settings, tr('设置', 'Settings')),
+      (Icons.key_outlined, Icons.key, l10n.navAuthenticators),
+      (Icons.password_outlined, Icons.password, l10n.navCredentials),
+      (Icons.fingerprint_outlined, Icons.fingerprint, l10n.navFingerprints),
+      (Icons.settings_outlined, Icons.settings, l10n.navSettings),
     ];
     final safeBottom = bottom ? MediaQuery.paddingOf(context).bottom : 0.0;
 
     Widget scanButton() => IconButton(
-      tooltip: tr('重新扫描', 'Scan again'),
+      tooltip: l10n.scanAgain,
       visualDensity: VisualDensity.compact,
       iconSize: 18,
       padding: EdgeInsets.zero,

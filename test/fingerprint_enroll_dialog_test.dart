@@ -4,6 +4,8 @@ import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/l10n.dart';
+
 void main() {
   for (final cleanupFails in [false, true]) {
     testWidgets('取消录入等待设备清理，清理失败=$cleanupFails', (tester) async {
@@ -11,7 +13,7 @@ void main() {
       var requests = 0;
       bool? result;
       await tester.pumpWidget(
-        MaterialApp(
+        l10nApp(
           home: Builder(
             builder: (context) {
               return TextButton(
@@ -19,7 +21,6 @@ void main() {
                   result = await showDialog<bool>(
                     context: context,
                     builder: (_) => FingerprintEnrollDialog(
-                      tr: (zh, en) => zh,
                       onEnroll: () => enrollment.future,
                       onCancel: () {
                         requests++;
@@ -71,7 +72,7 @@ void main() {
       var closed = false;
       bool? result;
       await tester.pumpWidget(
-        MaterialApp(
+        l10nApp(
           builder: (context, child) => MediaQuery(
             data: MediaQueryData(disableAnimations: reduceMotion),
             child: child!,
@@ -83,7 +84,6 @@ void main() {
                   context: context,
                   barrierDismissible: false,
                   builder: (_) => FingerprintEnrollDialog(
-                    tr: (zh, en) => zh,
                     onEnroll: () => enrollment.future,
                     samples: () => 2,
                   ),
@@ -126,9 +126,8 @@ void main() {
   testWidgets('完成动画中卸载弹窗不会继续关闭路由', (tester) async {
     final enrollment = Completer<void>();
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: FingerprintEnrollDialog(
-          tr: (zh, en) => zh,
           onEnroll: () => enrollment.future,
           samples: () => 0,
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
 import '../ui/callbacks.dart';
 import '../widgets/action_button.dart';
@@ -11,7 +12,6 @@ class CredentialsPage extends StatelessWidget {
     required this.snapshot,
     required this.busy,
     required this.closing,
-    required this.tr,
     required this.onAction,
     required this.onPrompt,
     required this.searchController,
@@ -20,27 +20,22 @@ class CredentialsPage extends StatelessWidget {
   final backend.Snapshot? snapshot;
   final bool busy;
   final bool closing;
-  final Translate tr;
   final RunAction onAction;
   final PromptOperation onPrompt;
   final TextEditingController searchController;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final active = snapshot?.active;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        SelectedDeviceBanner(device: active, tr: tr),
+        SelectedDeviceBanner(device: active),
         if (active != null) ...[
           const SizedBox(height: 16),
           if (snapshot?.canManageCredentials != true)
-            Text(
-              tr(
-                '当前认证器不支持凭证管理',
-                'This authenticator does not support credentials',
-              ),
-            )
+            Text(l10n.credentialsUnsupported)
           else ...[
             Wrap(
               spacing: 12,
@@ -48,33 +43,33 @@ class CredentialsPage extends StatelessWidget {
               children: [
                 actionButton(
                   disabled: busy || closing,
-                  tr('读取凭证', 'Read credentials'),
+                  l10n.readCredentials,
                   () => onAction(backend.CommandKind.listCredentials),
                   icon: Icons.refresh,
                 ),
                 actionButton(
                   disabled: busy || closing,
-                  tr('更改 PIN', 'Change PIN'),
+                  l10n.changePin,
                   () => onPrompt(
                     context,
                     backend.CommandKind.changePin,
-                    tr('更改 PIN', 'Change PIN'),
+                    l10n.changePin,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Text(
-              '${tr('已用', 'Used')}: ${snapshot!.existing} · ${tr('剩余', 'Remaining')}: ${snapshot!.remaining}',
+              l10n.credentialsQuota(
+                snapshot!.existing.toString(),
+                snapshot!.remaining.toString(),
+              ),
             ),
             TextField(
               controller: searchController,
               enabled: !busy && !closing,
               decoration: InputDecoration(
-                labelText: tr(
-                  '搜索网站或用户，回车筛选',
-                  'Search website or user, press Enter',
-                ),
+                labelText: l10n.searchWebsiteOrUser,
                 prefixIcon: const Icon(Icons.search),
               ),
               onSubmitted: (query) =>
@@ -90,16 +85,18 @@ class CredentialsPage extends StatelessWidget {
                   ),
                   isThreeLine: true,
                   trailing: IconButton(
-                    tooltip: tr('删除凭证', 'Delete credential'),
+                    tooltip: l10n.deleteCredential,
                     onPressed: busy || closing
                         ? null
                         : () => onPrompt(
                             context,
                             backend.CommandKind.deleteCredential,
-                            tr('永久删除凭证', 'Permanently delete credential'),
+                            l10n.permanentlyDeleteCredential,
                             value: credential.id,
-                            detail:
-                                '${credential.rpId}\n${credential.userName}\n${tr('删除后可能无法再登录此账号，操作无法撤销。', 'You may lose access to this account. This cannot be undone.')}',
+                            detail: l10n.deleteCredentialDetail(
+                              credential.rpId,
+                              credential.userName,
+                            ),
                           ),
                     icon: const Icon(Icons.delete_outline),
                   ),
@@ -108,9 +105,7 @@ class CredentialsPage extends StatelessWidget {
             if (snapshot!.credentials.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  tr('没有匹配的可发现凭证', 'No matching discoverable credentials'),
-                ),
+                child: Text(l10n.noMatchingCredentials),
               ),
           ],
         ],

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
+
 class OperationDialog extends StatefulWidget {
   const OperationDialog({
     super.key,
     required this.title,
-    required this.tr,
     required this.onSubmit,
     this.detail,
     this.changePin = false,
@@ -14,7 +15,6 @@ class OperationDialog extends StatefulWidget {
   final String? detail;
   final bool changePin;
   final bool askPin;
-  final String Function(String, String) tr;
   final Future<void> Function(String pin, String newPin, String confirmPin)
   onSubmit;
 
@@ -67,6 +67,7 @@ class _OperationDialogState extends State<OperationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return PopScope(
       canPop: !_pending,
       child: AlertDialog(
@@ -89,10 +90,7 @@ class _OperationDialogState extends State<OperationDialog> {
                           const CircularProgressIndicator(),
                           const SizedBox(height: 16),
                           Text(
-                            widget.tr(
-                              '正在与认证器通信，请按设备提示触碰或采样…',
-                              'Communicating with the authenticator. Follow its touch or enrollment prompts…',
-                            ),
+                            l10n.communicatingWithAuthenticator,
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -108,7 +106,7 @@ class _OperationDialogState extends State<OperationDialog> {
                   if (widget.askPin)
                     _pinField(
                       controller: _pin,
-                      label: widget.tr('设备 PIN', 'Device PIN'),
+                      label: l10n.devicePin,
                       autofocus: true,
                       onSubmitted: (_) {
                         if (!widget.changePin) _submit();
@@ -117,12 +115,12 @@ class _OperationDialogState extends State<OperationDialog> {
                   if (widget.changePin) ...[
                     _pinField(
                       controller: _newPin,
-                      label: widget.tr('新 PIN', 'New PIN'),
+                      label: l10n.newPin,
                       autofocus: !widget.askPin,
                     ),
                     _pinField(
                       controller: _confirm,
-                      label: widget.tr('确认新 PIN', 'Confirm new PIN'),
+                      label: l10n.confirmNewPin,
                       onSubmitted: (_) => _submit(),
                     ),
                   ],
@@ -146,12 +144,9 @@ class _OperationDialogState extends State<OperationDialog> {
             : [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(widget.tr('取消', 'Cancel')),
+                  child: Text(l10n.cancel),
                 ),
-                FilledButton(
-                  onPressed: _submit,
-                  child: Text(widget.tr('确认', 'Confirm')),
-                ),
+                FilledButton(onPressed: _submit, child: Text(l10n.confirm)),
               ],
       ),
     );

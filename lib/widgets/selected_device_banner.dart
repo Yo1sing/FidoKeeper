@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
 import '../src/rust/api/models.dart';
-import '../ui/callbacks.dart';
 
 class SelectedDeviceBanner extends StatelessWidget {
-  const SelectedDeviceBanner({
-    super.key,
-    required this.device,
-    required this.tr,
-  });
+  const SelectedDeviceBanner({super.key, required this.device});
 
   final DeviceSummary? device;
-  final Translate tr;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = context.l10n;
     if (device == null) {
       return Text(
-        tr('请先在认证器页面选择设备', 'Select a device from Authenticators first'),
+        l10n.selectDeviceFirst,
         style: theme.textTheme.bodyLarge?.copyWith(
           color: scheme.onSurfaceVariant,
         ),
@@ -44,7 +40,7 @@ class SelectedDeviceBanner extends StatelessWidget {
                 ),
               ),
               Text(
-                tr('已解锁', 'Unlocked'),
+                l10n.unlocked,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.primary,
                 ),

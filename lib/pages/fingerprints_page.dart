@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
 import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
@@ -12,7 +13,6 @@ class FingerprintsPage extends StatelessWidget {
     required this.snapshot,
     required this.busy,
     required this.closing,
-    required this.tr,
     required this.onAction,
     required this.onPrompt,
   });
@@ -20,34 +20,29 @@ class FingerprintsPage extends StatelessWidget {
   final backend.Snapshot? snapshot;
   final bool busy;
   final bool closing;
-  final Translate tr;
   final RunAction onAction;
   final PromptOperation onPrompt;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final active = snapshot?.active;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        SelectedDeviceBanner(device: active, tr: tr),
+        SelectedDeviceBanner(device: active),
         if (active != null) ...[
           const SizedBox(height: 16),
           if (snapshot?.canManageFingerprints != true)
-            Text(
-              tr(
-                '当前认证器不支持指纹',
-                'This authenticator does not support fingerprints',
-              ),
-            )
+            Text(l10n.fingerprintsUnsupported)
           else ...[
             actionButton(
               disabled: busy || closing,
-              tr('录入指纹', 'Enroll fingerprint'),
+              l10n.enrollFingerprint,
               () => onPrompt(
                 context,
                 backend.CommandKind.enrollBio,
-                tr('录入指纹', 'Enroll fingerprint'),
+                l10n.enrollFingerprint,
               ),
             ),
             for (final template in snapshot!.templates)
@@ -60,20 +55,20 @@ class FingerprintsPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      tooltip: tr('重命名指纹', 'Rename fingerprint'),
+                      tooltip: l10n.renameFingerprint,
                       onPressed: busy || closing
                           ? null
                           : () => _rename(context, template),
                       icon: const Icon(Icons.edit_outlined),
                     ),
                     IconButton(
-                      tooltip: tr('删除指纹', 'Delete fingerprint'),
+                      tooltip: l10n.deleteFingerprint,
                       onPressed: busy || closing
                           ? null
                           : () => onPrompt(
                               context,
                               backend.CommandKind.deleteBio,
-                              tr('永久删除指纹', 'Permanently delete fingerprint'),
+                              l10n.permanentlyDeleteFingerprint,
                               value: template.id,
                               detail: template.name.isEmpty
                                   ? template.id
@@ -88,7 +83,7 @@ class FingerprintsPage extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: Text(
-                  tr('尚未录入指纹', 'No fingerprints enrolled'),
+                  l10n.noFingerprintsEnrolled,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -107,7 +102,7 @@ class FingerprintsPage extends StatelessWidget {
     final name = await showDialog<String>(
       context: context,
       builder: (dialogContext) =>
-          _RenameFingerprintDialog(initial: template.name, tr: tr),
+          _RenameFingerprintDialog(initial: template.name),
     );
     if (name == null) return;
     await onAction(
@@ -119,10 +114,9 @@ class FingerprintsPage extends StatelessWidget {
 }
 
 class _RenameFingerprintDialog extends StatefulWidget {
-  const _RenameFingerprintDialog({required this.initial, required this.tr});
+  const _RenameFingerprintDialog({required this.initial});
 
   final String initial;
-  final Translate tr;
 
   @override
   State<_RenameFingerprintDialog> createState() =>
@@ -148,26 +142,25 @@ class _RenameFingerprintDialogState extends State<_RenameFingerprintDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return AlertDialog(
-      title: Text(widget.tr('重命名指纹', 'Rename fingerprint')),
+      title: Text(l10n.renameFingerprint),
       content: SizedBox(
         width: 360,
         child: TextField(
           controller: _name,
           autofocus: true,
           maxLength: 64,
-          decoration: InputDecoration(
-            labelText: widget.tr('指纹名称', 'Fingerprint name'),
-          ),
+          decoration: InputDecoration(labelText: l10n.fingerprintName),
           onSubmitted: (_) => _submit(),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(widget.tr('取消', 'Cancel')),
+          child: Text(l10n.cancel),
         ),
-        FilledButton(onPressed: _submit, child: Text(widget.tr('保存', 'Save'))),
+        FilledButton(onPressed: _submit, child: Text(l10n.save)),
       ],
     );
   }

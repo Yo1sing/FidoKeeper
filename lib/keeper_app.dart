@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'src/rust/api/keeper.dart' as backend;
 import 'src/rust/api/models.dart';
+import 'l10n/locale_preference.dart';
 import 'pages/devices_page.dart';
 import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
@@ -34,12 +35,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       _busy &&
       (_busyKind == backend.CommandKind.scan ||
           _busyKind == backend.CommandKind.initialize);
-  bool get _showBusyBar =>
-      _closing ||
-      (_busy &&
-          !_scanningAuthenticators &&
-          _busyKind != backend.CommandKind.connect &&
-          _busyKind != backend.CommandKind.enrollBio);
   Future<void> _queue = Future<void>.value();
   bool _closing = false;
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
@@ -48,10 +43,11 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   final _search = TextEditingController();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
-  String tr(String zh, String en) =>
-      (_state?.preferences.locale ?? widget.preferences?.locale) == 'en-US'
-      ? en
-      : zh;
+  Locale get _appLocale => localeFromPreference(
+    _state?.preferences.locale ?? widget.preferences?.locale,
+  );
+
+  AppLocalizations get _l10n => lookupAppLocalizations(_appLocale);
 
   ThemeMode get _themeMode =>
       switch (_state?.preferences.theme ?? widget.preferences?.theme) {
@@ -88,7 +84,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     bool enqueue = false,
   }) async {
     if ((_busy && !enqueue) || _closing) {
-      throw StateError(tr('请等待当前操作完成', 'Wait for the current operation'));
+      throw StateError(_l10n.waitForCurrentOperation);
     }
     setState(() {
       _pending++;
@@ -185,7 +181,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       barrierDismissible: false,
       builder: (_) => kind == backend.CommandKind.enrollBio
           ? FingerprintEnrollDialog(
-              tr: tr,
               onEnroll: () => _dispatch(kind, value: value),
               samples: backend.enrollCaptured,
               onCancel: backend.cancelEnrollment,
@@ -195,7 +190,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
               detail: detail,
               changePin: inputs.changePin,
               askPin: inputs.askPin,
-              tr: tr,
               onSubmit: (pin, newPin, confirmPin) => _dispatch(
                 kind,
                 value: value,
@@ -208,7 +202,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     );
     if (!mounted || completed != true) return;
     _messenger.currentState?.showSnackBar(
-      SnackBar(content: Text(tr('操作成功', 'Operation completed'))),
+      SnackBar(content: Text(_l10n.operationCompleted)),
     );
   }
 
@@ -232,7 +226,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           busy: _busy,
           scanning: _scanningAuthenticators,
           closing: _closing,
-          tr: tr,
           onAction: _act,
           onPrompt: _prompt,
         ),
@@ -240,7 +233,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           snapshot: _state,
           busy: _busy,
           closing: _closing,
-          tr: tr,
           onAction: _act,
           onPrompt: _prompt,
           searchController: _search,
@@ -249,7 +241,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           snapshot: _state,
           busy: _busy,
           closing: _closing,
-          tr: tr,
           onAction: _act,
           onPrompt: _prompt,
         ),
@@ -257,7 +248,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           snapshot: _state,
           busy: _busy,
           closing: _closing,
-          tr: tr,
           onAction: _act,
         ),
       },
@@ -276,14 +266,13 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_showBusyBar) const LinearProgressIndicator(minHeight: 2),
         if (_error != null)
           MaterialBanner(
             content: Text(_error!),
             actions: [
               TextButton(
                 onPressed: () => setState(() => _error = null),
-                child: Text(tr('关闭', 'Dismiss')),
+                child: Text(_l10n.dismiss),
               ),
             ],
           ),
@@ -307,6 +296,9 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       useMaterial3: true,
     ),
     themeMode: _themeMode,
+    locale: _appLocale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     builder: widget.desktop ? VirtualWindowFrameInit() : null,
     home: Builder(
       builder: (context) {
@@ -319,7 +311,6 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           onScanDevices: () => _act(backend.CommandKind.scan),
           scanEnabled: !_busy && !_closing,
           scanning: _scanningAuthenticators,
-          tr: tr,
         );
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(

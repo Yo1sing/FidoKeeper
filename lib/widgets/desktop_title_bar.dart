@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../l10n/locale_preference.dart';
+
 class DesktopTitleBar extends StatefulWidget implements PreferredSizeWidget {
   const DesktopTitleBar({super.key});
 
@@ -41,6 +43,7 @@ class _DesktopTitleBarState extends State<DesktopTitleBar> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     return Material(
       color: theme.colorScheme.surfaceContainer,
       child: SizedBox(
@@ -68,14 +71,14 @@ class _DesktopTitleBarState extends State<DesktopTitleBar> with WindowListener {
               ),
             ),
             Tooltip(
-              message: '最小化',
+              message: l10n.minimizeWindow,
               child: WindowCaptionButton.minimize(
                 brightness: theme.brightness,
                 onPressed: () => windowManager.minimize(),
               ),
             ),
             Tooltip(
-              message: _maximized ? '还原' : '最大化',
+              message: _maximized ? l10n.restoreWindow : l10n.maximizeWindow,
               child: _maximized
                   ? WindowCaptionButton.unmaximize(
                       brightness: theme.brightness,
@@ -87,7 +90,7 @@ class _DesktopTitleBarState extends State<DesktopTitleBar> with WindowListener {
                     ),
             ),
             Tooltip(
-              message: '关闭',
+              message: l10n.close,
               child: WindowCaptionButton.close(
                 brightness: theme.brightness,
                 onPressed: () => windowManager.close(),

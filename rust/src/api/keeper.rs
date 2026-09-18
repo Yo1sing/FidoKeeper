@@ -242,7 +242,7 @@ impl State {
                     }
                     preferences.theme = value;
                 } else {
-                    if !["zh-CN", "en-US"].contains(&value.as_str()) {
+                    if !preferences::SUPPORTED_LOCALES.contains(&value.as_str()) {
                         return Err("无效语言".to_owned());
                     }
                     preferences.locale = value;
@@ -768,6 +768,9 @@ mod tests {
     fn invalid_preferences_do_not_change_state_or_write_files() {
         let mut state = state();
         assert!(state.apply(command(CommandKind::Theme, "invalid")).is_err());
+        assert!(state
+            .apply(command(CommandKind::Locale, "invalid"))
+            .is_err());
         assert_eq!(state.preferences, Preferences::default());
     }
 }

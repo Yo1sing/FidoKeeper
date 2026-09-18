@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/locale_preference.dart';
 import 'fingerprint_enroll_animation.dart';
 
 export 'fingerprint_enroll_animation.dart';
@@ -9,13 +10,11 @@ export 'fingerprint_enroll_animation.dart';
 class FingerprintEnrollDialog extends StatefulWidget {
   const FingerprintEnrollDialog({
     super.key,
-    required this.tr,
     required this.onEnroll,
     required this.samples,
     this.onCancel,
   });
 
-  final String Function(String, String) tr;
   final Future<void> Function() onEnroll;
   final int Function() samples;
   final bool Function()? onCancel;
@@ -102,10 +101,11 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     return PopScope(
       canPop: !_pending && !_finished,
       child: AlertDialog(
-        title: Text(widget.tr('录入指纹', 'Enroll fingerprint')),
+        title: Text(l10n.enrollFingerprint),
         content: SizedBox(
           width: 360,
           child: Column(
@@ -121,16 +121,10 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
               const SizedBox(height: 20),
               Text(
                 _cancelling && _pending
-                    ? widget.tr('正在取消录入，请稍候…', 'Cancelling enrollment…')
+                    ? l10n.cancellingEnrollment
                     : _error == null
-                    ? widget.tr(
-                        '请在安全密钥上按压指纹传感器，每按一次会多显出一段纹路',
-                        'Press the sensor on the key. Each press reveals more of the fingerprint.',
-                      )
-                    : widget.tr(
-                        '采样未完成，可以重试。',
-                        'Enrollment did not finish. You can try again.',
-                      ),
+                    ? l10n.enrollInstruction
+                    : l10n.enrollIncomplete,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),
@@ -160,17 +154,14 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
                         setState(() => _error = error.toString());
                       }
                     },
-              child: Text(widget.tr('取消录入', 'Cancel enrollment')),
+              child: Text(l10n.cancelEnrollment),
             ),
           if (!_pending && _error != null) ...[
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(widget.tr('关闭', 'Close')),
+              child: Text(l10n.close),
             ),
-            FilledButton(
-              onPressed: _start,
-              child: Text(widget.tr('重试', 'Retry')),
-            ),
+            FilledButton(onPressed: _start, child: Text(l10n.retry)),
           ],
         ],
       ),

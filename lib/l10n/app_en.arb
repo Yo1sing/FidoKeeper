@@ -1,0 +1,101 @@
+{
+  "@@locale": "en",
+  "waitForCurrentOperation": "Wait for the current operation",
+  "operationCompleted": "Operation completed",
+  "dismiss": "Dismiss",
+  "close": "Close",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "retry": "Retry",
+  "navAuthenticators": "Devices",
+  "navCredentials": "Credentials",
+  "navFingerprints": "Fingerprints",
+  "navSettings": "Settings",
+  "scanAgain": "Scan again",
+  "selectAuthenticator": "Select authenticator",
+  "resetAuthenticator": "Reset authenticator",
+  "resetAuthenticatorDetail": "{label}\nThis permanently erases all credentials, PIN and fingerprints. Reinsert the device, confirm immediately, then touch it as prompted.",
+  "@resetAuthenticatorDetail": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "supported": "Supported",
+  "notSupported": "Not supported",
+  "transport": "Transport",
+  "protocol": "Protocol",
+  "path": "Path",
+  "credentialManagement": "Credential management",
+  "fingerprint": "Fingerprint",
+  "waitForUsbOrNfc": "Insert a USB key or hold an NFC key",
+  "noAuthenticatorsFound": "No authenticators found. Check connections, device permissions, or hidden devices.",
+  "moreActions": "More actions",
+  "details": "Details",
+  "disconnect": "Disconnect",
+  "hideDevice": "Hide device",
+  "resetDevice": "Reset device…",
+  "unlocked": "Unlocked",
+  "tapToSelectAndEnterPin": "Tap to select and enter PIN",
+  "localHid": "Local HID",
+  "credentialsUnsupported": "This authenticator does not support credentials",
+  "readCredentials": "Read credentials",
+  "changePin": "Change PIN",
+  "credentialsQuota": "Used: {used} · Remaining: {remaining}",
+  "@credentialsQuota": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "remaining": {
+        "type": "String"
+      }
+    }
+  },
+  "searchWebsiteOrUser": "Search website or user, press Enter",
+  "deleteCredential": "Delete credential",
+  "permanentlyDeleteCredential": "Permanently delete credential",
+  "deleteCredentialDetail": "{rpId}\n{userName}\nYou may lose access to this account. This cannot be undone.",
+  "@deleteCredentialDetail": {
+    "placeholders": {
+      "rpId": {
+        "type": "String"
+      },
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "noMatchingCredentials": "No matching discoverable credentials",
+  "fingerprintsUnsupported": "This authenticator does not support fingerprints",
+  "enrollFingerprint": "Enroll fingerprint",
+  "renameFingerprint": "Rename fingerprint",
+  "deleteFingerprint": "Delete fingerprint",
+  "permanentlyDeleteFingerprint": "Permanently delete fingerprint",
+  "noFingerprintsEnrolled": "No fingerprints enrolled",
+  "fingerprintName": "Fingerprint name",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "language": "Language",
+  "languageZh": "简体中文",
+  "languageZhTw": "繁體中文",
+  "languageEn": "English",
+  "hiddenAuthenticators": "Hidden authenticators",
+  "showAgain": "Show again",
+  "communicatingWithAuthenticator": "Communicating with the authenticator. Follow its touch or enrollment prompts…",
+  "devicePin": "Device PIN",
+  "newPin": "New PIN",
+  "confirmNewPin": "Confirm new PIN",
+  "cancellingEnrollment": "Cancelling enrollment…",
+  "enrollInstruction": "Press the sensor on the key. Each press reveals more of the fingerprint.",
+  "enrollIncomplete": "Enrollment did not finish. You can try again.",
+  "cancelEnrollment": "Cancel enrollment",
+  "selectDeviceFirst": "Select a device from Authenticators first",
+  "minimizeWindow": "Minimize",
+  "restoreWindow": "Restore",
+  "maximizeWindow": "Maximize"
+}

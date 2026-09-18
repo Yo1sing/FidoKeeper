@@ -43,7 +43,11 @@ class FakeApi extends Fake implements RustLibApi {
     ),
     query: '',
   );
-  Snapshot _copy({DeviceSummary? active, bool clearActive = false}) => Snapshot(
+  Snapshot _copy({
+    DeviceSummary? active,
+    bool clearActive = false,
+    Preferences? preferences,
+  }) => Snapshot(
     canManageCredentials: true,
     canManageFingerprints:
         !clearActive && (active ?? snapshot.active)?.fingerprint == true,
@@ -53,7 +57,7 @@ class FakeApi extends Fake implements RustLibApi {
     existing: snapshot.existing,
     remaining: snapshot.remaining,
     templates: snapshot.templates,
-    preferences: snapshot.preferences,
+    preferences: preferences ?? snapshot.preferences,
     query: snapshot.query,
   );
 
@@ -222,6 +226,91 @@ void main() {
     expect(api.dispatched, [CommandKind.initialize]);
     initialization.complete(api.snapshot);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('已加载设置时首帧即使用保存的语言', (tester) async {
+    const english = Preferences(
+      locale: 'en-US',
+      theme: 'light',
+      hiddenAuthenticators: [],
+    );
+    final initialization = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    api.snapshot = api._copy(preferences: english);
+    await tester.pumpWidget(
+      const KeeperApp(desktop: false, preferences: english),
+    );
+    await tester.pump();
+    expect(find.text('Devices'), findsOneWidget);
+    expect(find.text('认证器'), findsNothing);
+    initialization.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.text('Devices'), findsOneWidget);
+    expect(find.text('认证器'), findsNothing);
+  });
+
+  testWidgets('已加载设置时首帧即使用繁体中文', (tester) async {
+    const traditional = Preferences(
+      locale: 'zh-TW',
+      theme: 'light',
+      hiddenAuthenticators: [],
+    );
+    final initialization = Completer<Snapshot>();
+    api.initialize = () => initialization.future;
+    api.snapshot = api._copy(preferences: traditional);
+    await tester.pumpWidget(
+      const KeeperApp(desktop: false, preferences: traditional),
+    );
+    await tester.pump();
+    expect(find.text('認證器'), findsOneWidget);
+    expect(find.text('认证器'), findsNothing);
+    initialization.complete(api.snapshot);
+    await tester.pumpAndSettle();
+    expect(find.text('認證器'), findsOneWidget);
+    expect(find.text('設定'), findsOneWidget);
+    expect(find.text('设置'), findsNothing);
+  });
+
+  testWidgets('切换语言后界面改用对应文案', (tester) async {
+    api.operation = (command) async {
+      if (command.kind == CommandKind.locale) {
+        api.snapshot = api._copy(
+          preferences: Preferences(
+            locale: command.value,
+            theme: api.snapshot.preferences.theme,
+            hiddenAuthenticators: api.snapshot.preferences.hiddenAuthenticators,
+          ),
+        );
+      }
+      return api.snapshot;
+    };
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    expect(find.text('语言'), findsOneWidget);
+    await tester.tap(find.text('简体中文'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English').last);
+    await tester.pumpAndSettle();
+    expect(api.last!.kind, CommandKind.locale);
+    expect(api.last!.value, 'en-US');
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Hidden authenticators'), findsOneWidget);
+    expect(find.text('设置'), findsNothing);
+
+    await tester.tap(find.text('English').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('繁體中文').last);
+    await tester.pumpAndSettle();
+    expect(api.last!.kind, CommandKind.locale);
+    expect(api.last!.value, 'zh-TW');
+    expect(find.text('設定'), findsOneWidget);
+    expect(find.text('語言'), findsOneWidget);
+    expect(find.text('已隱藏的認證器'), findsOneWidget);
+    expect(find.text('设置'), findsNothing);
+    expect(find.text('Settings'), findsNothing);
   });
 
   testWidgets('忙碌时进入指纹页会在初始化后提交页面事件', (tester) async {
