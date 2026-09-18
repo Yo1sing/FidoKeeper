@@ -153,7 +153,7 @@ impl State {
         }
     }
     fn scan(&mut self) -> Result<(), String> {
-        let devices = self.hardware.discover()?;
+        let devices = self.hardware.discover(&cancel_requested)?;
         if self
             .active
             .as_ref()
@@ -296,7 +296,7 @@ impl State {
                 }
                 let switching = self.active.as_ref().is_none_or(|a| a.path != device.path);
                 let inventory = if device.credential_management {
-                    Some(self.hardware.inventory(&device.path, &pin)?)
+                    Some(self.hardware.inventory(&device.path, &pin, &cancel_requested)?)
                 } else {
                     None
                 };
@@ -322,7 +322,7 @@ impl State {
                     return Err("此设备不支持凭证管理或 PIN".into());
                 }
                 let pin = self.session_pin(&pin)?;
-                self.inventory = Some(self.hardware.inventory(&device.path, &pin)?);
+                self.inventory = Some(self.hardware.inventory(&device.path, &pin, &cancel_requested)?);
             }
             CommandKind::DeleteCredential => {
                 let device = self.active()?;
@@ -426,6 +426,11 @@ impl State {
 
 static STATE: OnceLock<Mutex<State>> = OnceLock::new();
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+
+/// 传给硬件层的取消判定：关闭请求置位后，设备循环在调用之间提前退出。
+fn cancel_requested() -> bool {
+    SHUTTING_DOWN.load(Ordering::SeqCst)
+}
 // 单个原子状态防止完成后到达的取消请求污染下一次录入。
 // 0：空闲，1：录入中，2：已请求取消。
 static ENROLL_STATE: AtomicU8 = AtomicU8::new(0);
@@ -500,10 +505,15 @@ mod tests {
         fail: bool,
     }
     impl Authenticator for SimulatedDevice {
-        fn discover(&mut self) -> Result<Vec<DeviceSummary>, String> {
+        fn discover(&mut self, _: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String> {
             Ok(vec![])
         }
-        fn inventory(&mut self, _: &str, _: &str) -> Result<Inventory, String> {
+        fn inventory(
+            &mut self,
+            _: &str,
+            _: &str,
+            _: &dyn Fn() -> bool,
+        ) -> Result<Inventory, String> {
             if self.fail {
                 return Err("模拟 PIN 验证失败".into());
             }

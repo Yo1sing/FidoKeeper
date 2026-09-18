@@ -13,6 +13,7 @@ import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/app_sidebar.dart';
+import 'widgets/closing_dialog.dart';
 import 'widgets/desktop_title_bar.dart';
 import 'widgets/fingerprint_enroll_dialog.dart';
 import 'widgets/operation_dialog.dart';
@@ -27,9 +28,28 @@ class KeeperApp extends StatefulWidget {
 }
 
 class _KeeperAppState extends State<KeeperApp> with WindowListener {
+  /// 关闭时等待后端的上限：写入设备的操作不能随手打断，读取类超时就先退出。
+  static const _readCloseTimeout = Duration(seconds: 3);
+  static const _writeCloseTimeout = Duration(seconds: 15);
+
+  /// 秒关时不显示提示，避免弹窗闪一下。
+  static const _closingHintDelay = Duration(milliseconds: 250);
+  static const _writeKinds = {
+    backend.CommandKind.changePin,
+    backend.CommandKind.reset,
+    backend.CommandKind.deleteCredential,
+    backend.CommandKind.deleteBio,
+    backend.CommandKind.renameBio,
+    backend.CommandKind.enrollBio,
+  };
+
   backend.Snapshot? _state;
   int _pending = 0;
   backend.CommandKind? _busyKind;
+
+  /// 关闭等待超过阈值后显示的操作，用于向用户说明正在等什么。
+  backend.CommandKind? _closingOperation;
+  Timer? _closingHint;
   bool get _busy => _pending > 0;
   bool get _scanningAuthenticators =>
       _busy &&
@@ -56,6 +76,17 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       WidgetsBinding.instance.platformDispatcher.locales,
     ),
   );
+
+  /// 全局字体：简体中文与英文用 SC，繁体中文用 TC。
+  String get _fontFamily {
+    final locale = resolveAppLocale(
+      _localeCode,
+      WidgetsBinding.instance.platformDispatcher.locales,
+    );
+    return locale.languageCode == 'zh' && locale.countryCode == 'TW'
+        ? 'HarmonyOS Sans TC'
+        : 'HarmonyOS Sans SC';
+  }
 
   ThemeMode get _themeMode =>
       switch (_state?.preferences.theme ?? widget.preferences?.theme) {
@@ -141,28 +172,44 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   @override
   void onWindowClose() async {
     if (_closing) return;
+    final kind = _busyKind;
     setState(() => _closing = true);
+    // 真的需要等才弹提示，秒关时不要闪一下。
+    if (kind != null) {
+      _closingHint = Timer(_closingHintDelay, () {
+        if (mounted && _closing) setState(() => _closingOperation = kind);
+      });
+    }
     try {
       // 关闭必须先通知后端取消，不能排在正在等待采样的操作之后。
-      await backend.dispatch(
-        command: const backend.Command(
-          kind: backend.CommandKind.shutdown,
-          value: '',
-          pin: '',
-          newPin: '',
-          confirmPin: '',
-          confirmed: false,
-        ),
-      );
-      await windowManager.destroy();
+      await backend
+          .dispatch(
+            command: const backend.Command(
+              kind: backend.CommandKind.shutdown,
+              value: '',
+              pin: '',
+              newPin: '',
+              confirmPin: '',
+              confirmed: false,
+            ),
+          )
+          .timeout(
+            _writeKinds.contains(kind) ? _writeCloseTimeout : _readCloseTimeout,
+          );
+    } on TimeoutException {
+      // 设备无响应时也要退出：写操作多等一会儿，读取类超时就直接关，
+      // 设备句柄由进程退出时回收。
     } catch (error) {
       if (mounted) {
         setState(() {
           _closing = false;
+          _closingOperation = null;
           _error = error.toString();
         });
       }
+      return;
     }
+    await windowManager.destroy();
   }
 
   @override
@@ -170,6 +217,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     for (final subscription in _exitSignals) {
       subscription.cancel();
     }
+    _closingHint?.cancel();
     if (widget.desktop) windowManager.removeListener(this);
     _search.dispose();
     super.dispose();
@@ -295,10 +343,12 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     debugShowCheckedModeBanner: false,
     scaffoldMessengerKey: _messenger,
     theme: ThemeData(
+      fontFamily: _fontFamily,
       colorSchemeSeed: const Color(0xff356859),
       useMaterial3: true,
     ),
     darkTheme: ThemeData(
+      fontFamily: _fontFamily,
       colorSchemeSeed: const Color(0xff356859),
       brightness: Brightness.dark,
       useMaterial3: true,
@@ -307,7 +357,21 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     locale: _appLocale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    builder: widget.desktop ? VirtualWindowFrameInit() : null,
+    builder: (context, child) {
+      // 关闭提示挂在 builder 上：位于 Navigator 之上，盖住所有对话框，
+      // 也不需要像 showDialog 那样在取消关闭时手动退场。
+      final framed = widget.desktop && child != null
+          ? VirtualWindowFrameInit()(context, child)
+          : child;
+      final closingOperation = _closingOperation;
+      return Stack(
+        children: [
+          ?framed,
+          if (closingOperation != null)
+            ClosingDialog(operation: closingOperation),
+        ],
+      );
+    },
     home: Builder(
       builder: (context) {
         final scheme = Theme.of(context).colorScheme;

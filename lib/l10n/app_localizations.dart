@@ -105,6 +105,42 @@ abstract class AppLocalizations {
   /// **'Wait for the current operation'**
   String get waitForCurrentOperation;
 
+  /// No description provided for @closing.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing…'**
+  String get closing;
+
+  /// No description provided for @closingWaitOperation.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for “{operation}” to finish. The app closes as soon as it completes.'**
+  String closingWaitOperation(String operation);
+
+  /// No description provided for @closingWaitAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the current operation to finish. The app closes as soon as it completes.'**
+  String get closingWaitAny;
+
+  /// No description provided for @operationScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning authenticators'**
+  String get operationScan;
+
+  /// No description provided for @operationVerifyPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying PIN'**
+  String get operationVerifyPin;
+
+  /// No description provided for @operationReadFingerprints.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading fingerprints'**
+  String get operationReadFingerprints;
+
   /// No description provided for @operationCompleted.
   ///
   /// In en, this message translates to:

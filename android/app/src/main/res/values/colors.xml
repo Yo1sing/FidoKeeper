@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sampled from assets/icon/fidokeeper-icon-v3.png. Keep in sync with
+         tool/generate_app_icons.py and web/manifest.json. -->
+    <color name="ic_launcher_background">#245C4F</color>
+</resources>

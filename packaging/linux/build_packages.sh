@@ -3,6 +3,7 @@
 #
 # 用法：packaging/linux/build_packages.sh [bundle 目录] [输出目录]
 #       VERSION=1.2.3 packaging/linux/build_packages.sh    # 覆盖版本号（默认取 pubspec.yaml）
+#       RELEASE=2 packaging/linux/build_packages.sh        # 覆盖 rpm 的 Release（默认 1）
 #       APPIMAGETOOL=/path/to/appimagetool ...             # 指定 appimagetool
 # 依赖：dpkg-deb、rpmbuild、appimagetool
 set -euo pipefail
@@ -20,12 +21,14 @@ SUMMARY="FIDO2 security key manager"
 DESCRIPTION="FidoKeeper manages FIDO2 authenticators over USB HID and NFC: browsing and deleting credentials, changing the PIN, and enrolling or removing fingerprint templates."
 DESKTOP_FILE="$HERE/$APP_ID.desktop"
 METAINFO_FILE="$HERE/$APP_ID.metainfo.xml"
-# 复用 macOS 应用的 512px 图标；没有独立的 Linux 图标资源
-ICON_FILE="$ROOT/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png"
+# Linux 打包使用独立的 512px 图标；由 tool/generate_app_icons.py 从品牌源图生成。
+ICON_FILE="$HERE/$APP_ID.png"
 APPIMAGETOOL="${APPIMAGETOOL:-appimagetool}"
 
 VERSION="${VERSION:-$(sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' "$ROOT/pubspec.yaml" | head -1)}"
 [ -n "$VERSION" ] || { echo "无法从 pubspec.yaml 读取版本号" >&2; exit 1; }
+# rpm 用 Version-Release 判断新旧；同一个版本重新打包时用 RELEASE 区分。
+RELEASE="${RELEASE:-1}"
 
 case "$(uname -m)" in
   x86_64) DEB_ARCH=amd64; RPM_ARCH=x86_64 ;;
@@ -93,7 +96,7 @@ build_rpm() {
   cat > "$topdir/SPECS/$BIN.spec" <<EOF
 Name: $BIN
 Version: $VERSION
-Release: 1
+Release: $RELEASE
 Summary: $SUMMARY
 License: AGPL-3.0-or-later
 URL: $HOMEPAGE

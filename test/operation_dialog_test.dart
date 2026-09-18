@@ -5,6 +5,7 @@ import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
 import 'package:fidokeeper/widgets/app_sidebar.dart';
+import 'package:fidokeeper/widgets/closing_dialog.dart';
 import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -173,6 +174,143 @@ void main() {
     await tester.pump();
     shutdown.complete(api.snapshot);
     await tester.pump();
+    expect(destroyed, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('关闭时等待进行中的扫描，超过上限也要退出并说明在等什么', (tester) async {
+    var destroyed = false;
+    const channel = MethodChannel('window_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      if (call.method == 'destroy') destroyed = true;
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    final scan = Completer<Snapshot>();
+    api.scan = () => scan.future;
+    // 后端串行化：关闭请求要等正在进行的操作让出状态锁
+    api.operation = (command) => command.kind == CommandKind.shutdown
+        ? scan.future
+        : Future.value(api.snapshot);
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('认证器'));
+    await tester.pump();
+    expect(api.dispatched.last, CommandKind.scan);
+
+    final listener = tester.state(find.byType(KeeperApp)) as WindowListener;
+    listener.onWindowClose();
+    await tester.pump();
+    expect(destroyed, isFalse);
+    expect(find.byType(ClosingDialog), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ClosingDialog), findsOneWidget);
+    // 限定在关闭提示内查找，避免命中操作对话框的同名标题
+    expect(
+      find.descendant(
+        of: find.byType(ClosingDialog),
+        matching: find.textContaining('扫描认证器'),
+      ),
+      findsOneWidget,
+    );
+
+    // 读取类操作最多等 3 秒，超时后仍然退出
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(destroyed, isTrue);
+
+    scan.complete(api.snapshot);
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('关闭时写操作等待更久，避免打断设备写入', (tester) async {
+    var destroyed = false;
+    const channel = MethodChannel('window_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      if (call.method == 'destroy') destroyed = true;
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    final reset = Completer<Snapshot>();
+    api.operation = (command) => switch (command.kind) {
+      CommandKind.reset || CommandKind.shutdown => reset.future,
+      _ => Future.value(api.snapshot),
+    };
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('重置设备…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确认'));
+    await tester.pump();
+    expect(api.dispatched.last, CommandKind.reset);
+
+    final listener = tester.state(find.byType(KeeperApp)) as WindowListener;
+    listener.onWindowClose();
+    await tester.pump(const Duration(milliseconds: 300));
+    // 限定在关闭提示内查找，避免命中操作对话框的同名标题
+    expect(
+      find.descendant(
+        of: find.byType(ClosingDialog),
+        matching: find.textContaining('重置认证器'),
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(destroyed, isFalse);
+    await tester.pump(const Duration(seconds: 12));
+    await tester.pump();
+    expect(destroyed, isTrue);
+
+    reset.complete(api.snapshot);
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('空闲时关闭不显示等待提示', (tester) async {
+    var destroyed = false;
+    const channel = MethodChannel('window_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      if (call.method == 'destroy') destroyed = true;
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+
+    final listener = tester.state(find.byType(KeeperApp)) as WindowListener;
+    listener.onWindowClose();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ClosingDialog), findsNothing);
     expect(destroyed, isTrue);
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
