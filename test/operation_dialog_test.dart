@@ -427,6 +427,9 @@ void main() {
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     expect(find.text('语言'), findsOneWidget);
+    await tester.tap(find.text('语言'));
+    await tester.pumpAndSettle();
+    expect(find.text('语言'), findsNWidgets(2));
     await tester.tap(find.text('简体中文'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('English').last);
@@ -434,7 +437,7 @@ void main() {
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'en-US');
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Language'), findsNWidgets(2));
     expect(find.text('Hidden authenticators'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
 
@@ -445,7 +448,7 @@ void main() {
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'zh-TW');
     expect(find.text('設定'), findsOneWidget);
-    expect(find.text('語言'), findsOneWidget);
+    expect(find.text('語言'), findsNWidgets(2));
     expect(find.text('已隱藏的認證器'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
     expect(find.text('Settings'), findsNothing);
@@ -501,7 +504,6 @@ void main() {
     await tester.tap(find.text('关于'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AboutDialog), findsOneWidget);
     expect(find.text('FIDO2 安全密钥管理工具'), findsOneWidget);
     expect(find.text('v1.0.0 (1)'), findsOneWidget);
     expect(find.text('查看许可'), findsOneWidget);
@@ -532,6 +534,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('语言'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('简体中文'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('跟随系统').last);
@@ -539,7 +543,7 @@ void main() {
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'system');
     expect(find.text('設定'), findsOneWidget);
-    expect(find.text('語言'), findsOneWidget);
+    expect(find.text('語言'), findsNWidgets(2));
     expect(find.text('设置'), findsNothing);
   });
 
@@ -753,6 +757,12 @@ void main() {
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     expect(find.text('已隐藏的认证器'), findsOneWidget);
+    expect(find.byType(AppSidebar), findsNothing);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppSidebar), findsOneWidget);
+
     await tester.tap(find.text('认证器'));
     await tester.pumpAndSettle();
     expect(api.dispatched.last, CommandKind.scan);
@@ -794,6 +804,8 @@ void main() {
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
     await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('已隐藏的认证器'));
     await tester.pumpAndSettle();
     expect(find.text('已隐藏的认证器'), findsOneWidget);
     expect(find.text('测试认证器'), findsOneWidget);
@@ -851,12 +863,17 @@ void main() {
 
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
+    expect(find.byType(AppSidebar), findsNothing);
     await tester.tap(find.text('浅色'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('深色').last);
     await tester.pumpAndSettle();
     expect(commands.last.kind, CommandKind.theme);
     expect(commands.last.value, 'dark');
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppSidebar), findsOneWidget);
 
     await tester.tap(find.text('凭证'));
     await tester.pumpAndSettle();

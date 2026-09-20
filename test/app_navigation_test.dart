@@ -46,7 +46,13 @@ Widget _wrap(Widget child) => l10nApp(home: Scaffold(body: child));
 void main() {
   testWidgets('侧栏纵向排列，底栏横向排列', (tester) async {
     await tester.pumpWidget(
-      _wrap(AppSidebar(selectedIndex: 0, onDestinationSelected: (_) {})),
+      _wrap(
+        AppSidebar(
+          selectedIndex: 0,
+          onDestinationSelected: (_) {},
+          onOpenSettings: () {},
+        ),
+      ),
     );
     final sideDevices = tester.getRect(find.text('认证器'));
     final sideCreds = tester.getRect(find.text('凭证'));
@@ -57,6 +63,7 @@ void main() {
         AppSidebar(
           selectedIndex: 0,
           onDestinationSelected: (_) {},
+          onOpenSettings: () {},
           bottom: true,
         ),
       ),
@@ -76,6 +83,7 @@ void main() {
         AppSidebar(
           selectedIndex: 0,
           onDestinationSelected: (_) {},
+          onOpenSettings: () {},
           bottom: true,
         ),
       ),
@@ -136,6 +144,7 @@ void main() {
         AppSidebar(
           selectedIndex: 0,
           onDestinationSelected: (_) {},
+          onOpenSettings: () {},
           onScanDevices: () {},
           scanning: true,
           scanEnabled: false,

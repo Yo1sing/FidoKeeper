@@ -24,13 +24,13 @@ class _SlidingPageSwitcherState extends State<SlidingPageSwitcher>
     parent: _controller,
     curve: Curves.easeOutCubic,
   );
-  double _dx = 0;
+  double _dy = 0;
 
   @override
   void didUpdateWidget(SlidingPageSwitcher oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
-    _dx = widget.index > oldWidget.index ? 0.12 : -0.12;
+    _dy = widget.index > oldWidget.index ? 0.12 : -0.12;
     _controller.forward(from: 0);
   }
 
@@ -48,7 +48,7 @@ class _SlidingPageSwitcherState extends State<SlidingPageSwitcher>
       child: SizedBox.expand(
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: Offset(_dx, 0),
+            begin: Offset(0, _dy),
             end: Offset.zero,
           ).animate(_curve),
           child: SizedBox.expand(child: RepaintBoundary(child: widget.child)),

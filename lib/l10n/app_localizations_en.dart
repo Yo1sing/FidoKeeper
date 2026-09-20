@@ -202,6 +202,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language => 'Language';
 
   @override
+  String get appearance => 'Appearance';
+
+  @override
   String get languageSystem => 'Follow system';
 
   @override
@@ -215,6 +218,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hiddenAuthenticators => 'Hidden authenticators';
+
+  @override
+  String get noHiddenAuthenticators => 'No hidden authenticators';
 
   @override
   String get showAgain => 'Show again';

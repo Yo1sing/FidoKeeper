@@ -60,6 +60,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   String? _error;
   int _page = 0;
+  bool _settingsOpen = false;
   final _search = TextEditingController();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
@@ -273,6 +274,16 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     }
   }
 
+  void _openSettings() {
+    if (_settingsOpen || _closing) return;
+    setState(() => _settingsOpen = true);
+  }
+
+  void _closeSettings() {
+    if (!_settingsOpen) return;
+    setState(() => _settingsOpen = false);
+  }
+
   Widget _contentColumn(BuildContext context, {bool padForBottomNav = false}) {
     Widget pages = SlidingPageSwitcher(
       index: _page,
@@ -300,11 +311,13 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           onAction: _act,
           onPrompt: _prompt,
         ),
-        _ => SettingsPage(
+        _ => DevicesPage(
           snapshot: _state,
           busy: _busy,
+          scanning: _scanningAuthenticators,
           closing: _closing,
           onAction: _act,
+          onPrompt: _prompt,
         ),
       },
     );
@@ -319,6 +332,10 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         child: pages,
       );
     }
+    return _pageWithError(pages);
+  }
+
+  Widget _pageWithError(Widget page) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -332,7 +349,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
               ),
             ],
           ),
-        Expanded(child: pages),
+        Expanded(child: page),
       ],
     );
   }
@@ -375,65 +392,160 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     home: Builder(
       builder: (context) {
         final scheme = Theme.of(context).colorScheme;
+        final l10n = context.l10n;
         final compact = !widget.desktop;
         final nav = AppSidebar(
           selectedIndex: _page,
           bottom: compact,
           onDestinationSelected: _selectPage,
+          onOpenSettings: _openSettings,
           onScanDevices: () => _act(backend.CommandKind.scan),
           scanEnabled: !_busy && !_closing,
           scanning: _scanningAuthenticators,
         );
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-            systemNavigationBarContrastEnforced: false,
-            systemNavigationBarIconBrightness:
-                scheme.brightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
+        final mainContent = compact
+            ? _contentColumn(context, padForBottomNav: true)
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  nav,
+                  Expanded(child: _contentColumn(context)),
+                ],
+              );
+        final settingsContent = _pageWithError(
+          SettingsPage(
+            snapshot: _state,
+            busy: _busy,
+            closing: _closing,
+            onAction: _act,
           ),
-          child: Scaffold(
-            backgroundColor: scheme.surface,
-            extendBody: compact,
-            appBar: widget.desktop
-                ? const DesktopTitleBar()
-                : AppBar(title: const Text('FidoKeeper')),
-            bottomNavigationBar: compact
-                ? Material(color: Colors.transparent, child: nav)
-                : null,
-            body: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    scheme.surface,
-                    Color.alphaBlend(
-                      scheme.primary.withValues(alpha: 0.08),
+        );
+        return PopScope(
+          canPop: !_settingsOpen,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && _settingsOpen) _closeSettings();
+          },
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+              systemNavigationBarContrastEnforced: false,
+              systemNavigationBarIconBrightness:
+                  scheme.brightness == Brightness.dark
+                  ? Brightness.light
+                  : Brightness.dark,
+            ),
+            child: Scaffold(
+              backgroundColor: scheme.surface,
+              extendBody: compact && !_settingsOpen,
+              appBar: widget.desktop
+                  ? DesktopTitleBar(
+                      onBack: _settingsOpen ? _closeSettings : null,
+                    )
+                  : _settingsOpen
+                  ? AppBar(
+                      title: Text(l10n.navSettings),
+                      leading: _AnimatedBackButton(onPressed: _closeSettings),
+                    )
+                  : AppBar(title: const Text('FidoKeeper')),
+              bottomNavigationBar: compact && !_settingsOpen
+                  ? Material(color: Colors.transparent, child: nav)
+                  : null,
+              body: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
                       scheme.surface,
-                    ),
-                    Color.alphaBlend(
-                      scheme.tertiary.withValues(alpha: 0.12),
-                      scheme.surfaceContainerLow,
-                    ),
-                  ],
+                      Color.alphaBlend(
+                        scheme.primary.withValues(alpha: 0.08),
+                        scheme.surface,
+                      ),
+                      Color.alphaBlend(
+                        scheme.tertiary.withValues(alpha: 0.12),
+                        scheme.surfaceContainerLow,
+                      ),
+                    ],
+                  ),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  reverseDuration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    final isSettings =
+                        child.key == const ValueKey('settings-page');
+                    final beginOffset = isSettings
+                        ? const Offset(0.035, 0)
+                        : const Offset(-0.035, 0);
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: beginOffset,
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _settingsOpen
+                      ? KeyedSubtree(
+                          key: const ValueKey('settings-page'),
+                          child: settingsContent,
+                        )
+                      : KeyedSubtree(
+                          key: const ValueKey('main-page'),
+                          child: mainContent,
+                        ),
                 ),
               ),
-              child: compact
-                  ? _contentColumn(context, padForBottomNav: true)
-                  : Row(
-                      children: [
-                        nav,
-                        Expanded(child: _contentColumn(context)),
-                      ],
-                    ),
             ),
           ),
         );
       },
     ),
   );
+}
+
+class _AnimatedBackButton extends StatefulWidget {
+  const _AnimatedBackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_AnimatedBackButton> createState() => _AnimatedBackButtonState();
+}
+
+class _AnimatedBackButtonState extends State<_AnimatedBackButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  )..forward();
+
+  late final Animation<Offset> _offset = Tween<Offset>(
+    begin: const Offset(-0.45, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: SlideTransition(
+        position: _offset,
+        child: BackButton(onPressed: widget.onPressed),
+      ),
+    );
+  }
 }

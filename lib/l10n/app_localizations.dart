@@ -459,6 +459,12 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get language;
 
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
   /// No description provided for @languageSystem.
   ///
   /// In en, this message translates to:
@@ -488,6 +494,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hidden authenticators'**
   String get hiddenAuthenticators;
+
+  /// No description provided for @noHiddenAuthenticators.
+  ///
+  /// In en, this message translates to:
+  /// **'No hidden authenticators'**
+  String get noHiddenAuthenticators;
 
   /// No description provided for @showAgain.
   ///
