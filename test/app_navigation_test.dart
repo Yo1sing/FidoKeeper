@@ -1,4 +1,7 @@
 import 'package:fidokeeper/keeper_app.dart';
+import 'package:fidokeeper/pages/credentials_page.dart';
+import 'package:fidokeeper/pages/devices_page.dart';
+import 'package:fidokeeper/pages/settings_page.dart';
 import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
@@ -165,5 +168,32 @@ void main() {
     final screen = tester.getRect(find.byType(Scaffold));
     expect(nav.center.dy, greaterThan(screen.height / 2));
     expect(nav.bottom, closeTo(screen.bottom, 24));
+  });
+
+  testWidgets('主栏和设置切换后立刻丢掉旧页，玻璃只有一块', (tester) async {
+    RustLib.initMock(api: _FakeApi());
+    addTearDown(RustLib.dispose);
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    expect(find.byType(DevicesPage), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+
+    await tester.tap(find.text('凭证'));
+    await tester.pump();
+    expect(find.byType(DevicesPage), findsNothing);
+    expect(find.byType(CredentialsPage), findsOneWidget);
+
+    await tester.tap(find.text('设置'));
+    await tester.pump();
+    expect(find.byType(CredentialsPage), findsNothing);
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(find.byType(AnimatedSwitcher), findsNothing);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+
+    expect(find.text('主题'), findsOneWidget);
+    await tester.tap(find.text('语言'));
+    await tester.pump();
+    expect(find.text('主题'), findsNothing);
+    expect(find.text('简体中文'), findsOneWidget);
   });
 }

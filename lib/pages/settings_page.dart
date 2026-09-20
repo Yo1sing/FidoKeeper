@@ -6,6 +6,7 @@ import '../src/rust/api/keeper.dart' as backend;
 import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
 import '../widgets/settings_sidebar.dart';
+import '../widgets/sliding_page_switcher.dart';
 
 enum _SettingsSection { appearance, language, hidden, about }
 
@@ -29,7 +30,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   _SettingsSection _section = _SettingsSection.appearance;
-  double _slideDirection = 1;
   Future<PackageInfo?>? _packageInfoFuture;
 
   Future<PackageInfo?> _loadPackageInfo() async {
@@ -45,7 +45,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final section = _SettingsSection.values[index];
     if (section == _section) return;
     setState(() {
-      _slideDirection = section.index > _section.index ? 1 : -1;
       _section = section;
       if (section == _SettingsSection.about) {
         _packageInfoFuture ??= _loadPackageInfo();
@@ -57,24 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final compact = MediaQuery.sizeOf(context).width < 720;
-    final content = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        final incoming = child.key == ValueKey(_section);
-        final dy = incoming ? _slideDirection * 0.04 : -_slideDirection * 0.04;
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: Offset(0, dy),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
+    final content = SlidingPageSwitcher(
+      index: _section.index,
       child: KeyedSubtree(
         key: ValueKey(_section),
         child: _buildSection(context, l10n),

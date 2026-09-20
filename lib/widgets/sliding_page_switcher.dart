@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
+/// 只绘制当前页：切换时立刻丢掉旧 child，避免淡出叠层和 Opacity 离屏缓冲。
 class SlidingPageSwitcher extends StatefulWidget {
   const SlidingPageSwitcher({
     super.key,
     required this.index,
     required this.child,
+    this.axis = Axis.vertical,
+    this.slideExtent = 0.12,
   });
 
   final int index;
   final Widget child;
+  final Axis axis;
+
+  /// 新页滑入距离，相对自身尺寸的比例。
+  final double slideExtent;
 
   @override
   State<SlidingPageSwitcher> createState() => _SlidingPageSwitcherState();
@@ -24,13 +31,20 @@ class _SlidingPageSwitcherState extends State<SlidingPageSwitcher>
     parent: _controller,
     curve: Curves.easeOutCubic,
   );
-  double _dy = 0;
+  double _delta = 0;
 
   @override
   void didUpdateWidget(SlidingPageSwitcher oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
-    _dy = widget.index > oldWidget.index ? 0.12 : -0.12;
+    // 减弱动画时保持静止，避免 ticker 空转。
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _delta = 0;
+      return;
+    }
+    _delta = widget.index > oldWidget.index
+        ? widget.slideExtent
+        : -widget.slideExtent;
     _controller.forward(from: 0);
   }
 
@@ -41,14 +55,16 @@ class _SlidingPageSwitcherState extends State<SlidingPageSwitcher>
     super.dispose();
   }
 
+  Offset get _begin =>
+      widget.axis == Axis.horizontal ? Offset(_delta, 0) : Offset(0, _delta);
+
   @override
   Widget build(BuildContext context) {
-    // 只绘制当前页，避免旧页淡出叠层和 Opacity 离屏缓冲。
     return ClipRect(
       child: SizedBox.expand(
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: Offset(0, _dy),
+            begin: _begin,
             end: Offset.zero,
           ).animate(_curve),
           child: SizedBox.expand(child: RepaintBoundary(child: widget.child)),

@@ -470,37 +470,16 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
                     ],
                   ),
                 ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  reverseDuration: const Duration(milliseconds: 240),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final isSettings =
-                        child.key == const ValueKey('settings-page');
-                    final beginOffset = isSettings
-                        ? const Offset(0.035, 0)
-                        : const Offset(-0.035, 0);
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: beginOffset,
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _settingsOpen
-                      ? KeyedSubtree(
-                          key: const ValueKey('settings-page'),
-                          child: settingsContent,
-                        )
-                      : KeyedSubtree(
-                          key: const ValueKey('main-page'),
-                          child: mainContent,
-                        ),
+                child: SlidingPageSwitcher(
+                  index: _settingsOpen ? 1 : 0,
+                  axis: Axis.horizontal,
+                  slideExtent: 0.04,
+                  child: KeyedSubtree(
+                    key: ValueKey(
+                      _settingsOpen ? 'settings-page' : 'main-page',
+                    ),
+                    child: _settingsOpen ? settingsContent : mainContent,
+                  ),
                 ),
               ),
             ),
