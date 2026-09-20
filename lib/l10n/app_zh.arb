@@ -84,5 +84,7 @@
   "selectDeviceFirst": "请先在认证器页面选择设备",
   "minimizeWindow": "最小化",
   "restoreWindow": "还原",
-  "maximizeWindow": "最大化"
+  "maximizeWindow": "最大化",
+  "about": "关于",
+  "aboutDescription": "FIDO2 安全密钥管理工具"
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
@@ -88,7 +89,42 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+        const SizedBox(height: 24),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.info_outline),
+          title: Text(l10n.about),
+          onTap: () => _showAbout(context, l10n),
+        ),
       ],
+    );
+  }
+
+  Future<void> _showAbout(BuildContext context, AppLocalizations l10n) async {
+    PackageInfo? info;
+    try {
+      info = await PackageInfo.fromPlatform();
+    } catch (_) {
+      // 测试或平台实现不可用时，只展示应用名和开源许可。
+    }
+    if (!context.mounted) return;
+
+    final version = info == null || info.version.isEmpty
+        ? null
+        : info.buildNumber.isEmpty
+        ? 'v${info.version}'
+        : 'v${info.version} (${info.buildNumber})';
+
+    showAboutDialog(
+      context: context,
+      applicationName: 'FidoKeeper',
+      applicationVersion: version,
+      applicationIcon: Image.asset(
+        'assets/icon/fidokeeper-icon-v3.png',
+        width: 56,
+        height: 56,
+      ),
+      children: [Text(l10n.aboutDescription)],
     );
   }
 }

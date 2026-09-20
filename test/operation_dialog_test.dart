@@ -475,6 +475,38 @@ void main() {
     expect(find.text('Language'), findsOneWidget);
   });
 
+  testWidgets('设置页关于入口显示版本和开源许可', (tester) async {
+    const channel = MethodChannel('dev.fluttercommunity.plus/package_info');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (call) async => <String, dynamic>{
+        'appName': 'FidoKeeper',
+        'packageName': 'dev.yo1sing.fidokeeper',
+        'version': '1.0.0',
+        'buildNumber': '1',
+        'buildSignature': '',
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('关于'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AboutDialog), findsOneWidget);
+    expect(find.text('FIDO2 安全密钥管理工具'), findsOneWidget);
+    expect(find.text('v1.0.0 (1)'), findsOneWidget);
+    expect(find.text('查看许可'), findsOneWidget);
+  });
+
   testWidgets('设置页可把语言切到跟随系统并立即换用系统语言', (tester) async {
     tester.platformDispatcher.localesTestValue = const [
       Locale.fromSubtags(

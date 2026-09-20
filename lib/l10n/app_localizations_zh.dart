@@ -250,6 +250,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get maximizeWindow => '最大化';
+
+  @override
+  String get about => '关于';
+
+  @override
+  String get aboutDescription => 'FIDO2 安全密钥管理工具';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -497,4 +503,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get maximizeWindow => '最大化';
+
+  @override
+  String get about => '關於';
+
+  @override
+  String get aboutDescription => 'FIDO2 安全金鑰管理工具';
 }

@@ -566,6 +566,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maximize'**
   String get maximizeWindow;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @aboutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'FIDO2 security key manager'**
+  String get aboutDescription;
 }
 
 class _AppLocalizationsDelegate

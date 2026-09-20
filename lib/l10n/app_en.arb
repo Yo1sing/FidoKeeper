@@ -111,5 +111,7 @@
   "selectDeviceFirst": "Select a device from Authenticators first",
   "minimizeWindow": "Minimize",
   "restoreWindow": "Restore",
-  "maximizeWindow": "Maximize"
+  "maximizeWindow": "Maximize",
+  "about": "About",
+  "aboutDescription": "FIDO2 security key manager"
 }

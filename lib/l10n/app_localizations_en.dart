@@ -257,4 +257,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maximizeWindow => 'Maximize';
+
+  @override
+  String get about => 'About';
+
+  @override
+  String get aboutDescription => 'FIDO2 security key manager';
 }
