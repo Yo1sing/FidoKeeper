@@ -20,6 +20,11 @@ add_executable(${BINARY_NAME} WIN32
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
 
+# runner.exe.manifest 已声明 requireAdministrator。MSVC 链接器默认再嵌入
+# asInvoker 片段，mt.exe 合并时会因 level 不一致报 LNK1327。关掉自动 UAC，
+# 让清单文件成为提权声明的唯一来源。
+target_link_options(${BINARY_NAME} PRIVATE "/MANIFESTUAC:NO")
+
 # Add preprocessor definitions for the build version.
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
