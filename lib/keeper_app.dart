@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -12,6 +13,7 @@ import 'pages/devices_page.dart';
 import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
 import 'pages/settings_page.dart';
+import 'ui/color_presets.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/closing_dialog.dart';
 import 'widgets/desktop_title_bar.dart';
@@ -61,6 +63,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   String? _error;
   int _page = 0;
   bool _settingsOpen = false;
+  final _settingsKey = GlobalKey<SettingsPageState>();
   final _search = TextEditingController();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
@@ -95,6 +98,29 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         'dark' => ThemeMode.dark,
         _ => ThemeMode.system,
       };
+
+  bool get _dynamicColor =>
+      _state?.preferences.dynamicColor ??
+      widget.preferences?.dynamicColor ??
+      false;
+
+  Color get _seed => colorFromSeedHex(
+    _state?.preferences.colorSeed ?? widget.preferences?.colorSeed,
+  );
+
+  ThemeData _themeData({
+    required Brightness brightness,
+    ColorScheme? dynamicScheme,
+  }) {
+    final scheme = _dynamicColor && dynamicScheme != null
+        ? dynamicScheme.harmonized()
+        : ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
+    return ThemeData(
+      fontFamily: _fontFamily,
+      colorScheme: scheme,
+      useMaterial3: true,
+    );
+  }
 
   @override
   void initState() {
@@ -264,7 +290,10 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   }
 
   void _selectPage(int index) {
-    setState(() => _page = index);
+    setState(() {
+      _settingsOpen = false;
+      _page = index;
+    });
     // 移动端无独立刷新按钮，点「认证器」即扫描。
     if (!widget.desktop && index == 0 && !_busy && !_closing) {
       _act(backend.CommandKind.scan);
@@ -282,6 +311,11 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   void _closeSettings() {
     if (!_settingsOpen) return;
     setState(() => _settingsOpen = false);
+  }
+
+  void _onSettingsBack() {
+    if (_settingsKey.currentState?.handleBack() == true) return;
+    _closeSettings();
   }
 
   Widget _contentColumn(BuildContext context, {bool padForBottomNav = false}) {
@@ -355,143 +389,169 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'FidoKeeper',
-    debugShowCheckedModeBanner: false,
-    scaffoldMessengerKey: _messenger,
-    theme: ThemeData(
-      fontFamily: _fontFamily,
-      colorSchemeSeed: const Color(0xff356859),
-      useMaterial3: true,
-    ),
-    darkTheme: ThemeData(
-      fontFamily: _fontFamily,
-      colorSchemeSeed: const Color(0xff356859),
-      brightness: Brightness.dark,
-      useMaterial3: true,
-    ),
-    themeMode: _themeMode,
-    locale: _appLocale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    builder: (context, child) {
-      // 关闭提示挂在 builder 上：位于 Navigator 之上，盖住所有对话框，
-      // 也不需要像 showDialog 那样在取消关闭时手动退场。
-      final framed = widget.desktop && child != null
-          ? VirtualWindowFrameInit()(context, child)
-          : child;
-      final closingOperation = _closingOperation;
-      return Stack(
-        children: [
-          ?framed,
-          if (closingOperation != null)
-            ClosingDialog(operation: closingOperation),
-        ],
-      );
-    },
-    home: Builder(
-      builder: (context) {
-        final scheme = Theme.of(context).colorScheme;
-        final l10n = context.l10n;
-        final compact = !widget.desktop;
-        final nav = AppSidebar(
-          selectedIndex: _page,
-          bottom: compact,
-          onDestinationSelected: _selectPage,
-          onOpenSettings: _openSettings,
-          onScanDevices: () => _act(backend.CommandKind.scan),
-          scanEnabled: !_busy && !_closing,
-          scanning: _scanningAuthenticators,
+  Widget build(BuildContext context) => DynamicColorBuilder(
+    builder: (lightDynamic, darkDynamic) => MaterialApp(
+      title: 'FidoKeeper',
+      debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _messenger,
+      theme: _themeData(
+        brightness: Brightness.light,
+        dynamicScheme: lightDynamic,
+      ),
+      darkTheme: _themeData(
+        brightness: Brightness.dark,
+        dynamicScheme: darkDynamic,
+      ),
+      themeMode: _themeMode,
+      locale: _appLocale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) {
+        // 关闭提示挂在 builder 上：位于 Navigator 之上，盖住所有对话框，
+        // 也不需要像 showDialog 那样在取消关闭时手动退场。
+        final framed = widget.desktop && child != null
+            ? VirtualWindowFrameInit()(context, child)
+            : child;
+        final closingOperation = _closingOperation;
+        return Stack(
+          children: [
+            ?framed,
+            if (closingOperation != null)
+              ClosingDialog(operation: closingOperation),
+          ],
         );
-        final mainContent = compact
-            ? _contentColumn(context, padForBottomNav: true)
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  nav,
-                  Expanded(child: _contentColumn(context)),
-                ],
-              );
-        final settingsContent = _pageWithError(
-          SettingsPage(
+      },
+      home: Builder(
+        builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          final l10n = context.l10n;
+          final mq = MediaQuery.of(context);
+          final compact = !widget.desktop;
+          final inSettingsSubpage =
+              compact && (_settingsKey.currentState?.inSubpage ?? false);
+          final nav = AppSidebar(
+            selectedIndex: _page,
+            bottom: compact,
+            settingsSelected: compact && _settingsOpen && !inSettingsSubpage,
+            onDestinationSelected: _selectPage,
+            onOpenSettings: _openSettings,
+            onScanDevices: () => _act(backend.CommandKind.scan),
+            scanEnabled: !_busy && !_closing,
+            scanning: _scanningAuthenticators,
+          );
+          final mainContent = compact
+              ? _contentColumn(context, padForBottomNav: true)
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    nav,
+                    Expanded(child: _contentColumn(context)),
+                  ],
+                );
+          final settingsPage = SettingsPage(
+            key: _settingsKey,
+            compact: compact,
             snapshot: _state,
             busy: _busy,
             closing: _closing,
             onAction: _act,
-          ),
-        );
-        return PopScope(
-          canPop: !_settingsOpen,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && _settingsOpen) _closeSettings();
-          },
-          child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarDividerColor: Colors.transparent,
-              systemNavigationBarContrastEnforced: false,
-              systemNavigationBarIconBrightness:
-                  scheme.brightness == Brightness.dark
-                  ? Brightness.light
-                  : Brightness.dark,
-            ),
-            child: Scaffold(
-              backgroundColor: scheme.surface,
-              extendBody: compact && !_settingsOpen,
-              appBar: widget.desktop
-                  ? DesktopTitleBar(
-                      onBack: _settingsOpen ? _closeSettings : null,
-                    )
-                  : _settingsOpen
-                  ? AppBar(
-                      title: Text(l10n.navSettings),
-                      leading: _AnimatedBackButton(onPressed: _closeSettings),
-                    )
-                  : AppBar(title: const Text('FidoKeeper')),
-              bottomNavigationBar: compact && !_settingsOpen
-                  ? Material(color: Colors.transparent, child: nav)
-                  : null,
-              body: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      scheme.surface,
-                      Color.alphaBlend(
-                        scheme.primary.withValues(alpha: 0.08),
-                        scheme.surface,
+            onSubpageChanged: () => setState(() {}),
+          );
+          final settingsContent = _pageWithError(
+            compact
+                ? MediaQuery(
+                    data: mq.copyWith(
+                      padding: mq.padding.copyWith(
+                        bottom:
+                            mq.padding.bottom +
+                            (inSettingsSubpage ? 0 : bottomNavOverlayExtent),
                       ),
-                      Color.alphaBlend(
-                        scheme.tertiary.withValues(alpha: 0.12),
-                        scheme.surfaceContainerLow,
-                      ),
-                    ],
-                  ),
-                ),
-                child: SlidingPageSwitcher(
-                  index: _settingsOpen ? 1 : 0,
-                  axis: Axis.horizontal,
-                  slideExtent: 0.04,
-                  child: KeyedSubtree(
-                    key: ValueKey(
-                      _settingsOpen ? 'settings-page' : 'main-page',
                     ),
-                    child: _settingsOpen ? settingsContent : mainContent,
+                    child: settingsPage,
+                  )
+                : settingsPage,
+          );
+          final settingsTitle =
+              _settingsKey.currentState?.titleFor(l10n) ?? l10n.navSettings;
+          return PopScope(
+            canPop: !_settingsOpen,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop && _settingsOpen) _onSettingsBack();
+            },
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness:
+                    scheme.brightness == Brightness.dark
+                    ? Brightness.light
+                    : Brightness.dark,
+              ),
+              child: Scaffold(
+                backgroundColor: scheme.surface,
+                extendBody: compact,
+                appBar: widget.desktop
+                    ? DesktopTitleBar(
+                        onBack: _settingsOpen ? _closeSettings : null,
+                      )
+                    : _settingsOpen
+                    ? AppBar(
+                        title: Text(settingsTitle),
+                        leading: _AnimatedBackButton(
+                          key: const ValueKey('settings-back'),
+                          onPressed: _onSettingsBack,
+                        ),
+                      )
+                    : AppBar(title: const Text('FidoKeeper')),
+                bottomNavigationBar: compact
+                    ? SlidingDock(
+                        visible: !inSettingsSubpage,
+                        child: Material(color: Colors.transparent, child: nav),
+                      )
+                    : null,
+                body: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        scheme.surface,
+                        Color.alphaBlend(
+                          scheme.primary.withValues(alpha: 0.08),
+                          scheme.surface,
+                        ),
+                        Color.alphaBlend(
+                          scheme.tertiary.withValues(alpha: 0.12),
+                          scheme.surfaceContainerLow,
+                        ),
+                      ],
+                    ),
+                  ),
+                  child: SlidingPageSwitcher(
+                    index: _settingsOpen ? 1 : 0,
+                    axis: Axis.horizontal,
+                    slideExtent: 0.04,
+                    child: KeyedSubtree(
+                      key: ValueKey(
+                        _settingsOpen ? 'settings-page' : 'main-page',
+                      ),
+                      child: _settingsOpen ? settingsContent : mainContent,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     ),
   );
 }
 
 class _AnimatedBackButton extends StatefulWidget {
-  const _AnimatedBackButton({required this.onPressed});
+  const _AnimatedBackButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 

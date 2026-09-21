@@ -26,6 +26,12 @@ fn location() -> Result<PathBuf, String> {
 /// 可保存的语言标识；"system" 表示跟随系统语言，由界面层解析。
 pub(crate) const SUPPORTED_LOCALES: &[&str] = &["system", "zh-CN", "zh-TW", "en-US"];
 
+/// 关闭动态取色时可选的种子色；须与 Flutter `colorPresets` 一致。
+pub(crate) const COLOR_SEEDS: &[&str] = &[
+    "356859", "1a73e8", "6750a4", "0f766e", "c2410c", "be123c",
+];
+pub(crate) const DEFAULT_COLOR_SEED: &str = "356859";
+
 fn decode(data: &[u8]) -> Result<Preferences, String> {
     let mut settings: Preferences =
         serde_json::from_slice(data).map_err(|_| "设置文件格式损坏".to_owned())?;
@@ -34,6 +40,12 @@ fn decode(data: &[u8]) -> Result<Preferences, String> {
     }
     if !["light", "dark", "system"].contains(&settings.theme.as_str()) {
         settings.theme = "system".into();
+    }
+    let seed = settings.color_seed.to_ascii_lowercase();
+    if COLOR_SEEDS.contains(&seed.as_str()) {
+        settings.color_seed = seed;
+    } else {
+        settings.color_seed = DEFAULT_COLOR_SEED.into();
     }
     let mut paths = HashSet::new();
     settings
@@ -81,6 +93,23 @@ mod tests {
         let traditional =
             decode(br#"{"theme":"light","locale":"zh-TW","hidden_authenticators":[]}"#).unwrap();
         assert_eq!(traditional.locale, "zh-TW");
+        assert!(!traditional.dynamic_color);
+        assert_eq!(traditional.color_seed, DEFAULT_COLOR_SEED);
+        let dynamic = decode(
+            br#"{"theme":"light","locale":"zh-CN","hidden_authenticators":[],"dynamic_color":true}"#,
+        )
+        .unwrap();
+        assert!(dynamic.dynamic_color);
+        let custom = decode(
+            br#"{"theme":"light","locale":"zh-CN","hidden_authenticators":[],"color_seed":"1A73E8"}"#,
+        )
+        .unwrap();
+        assert_eq!(custom.color_seed, "1a73e8");
+        let bad_seed = decode(
+            br#"{"theme":"light","locale":"zh-CN","hidden_authenticators":[],"color_seed":"ffffff"}"#,
+        )
+        .unwrap();
+        assert_eq!(bad_seed.color_seed, DEFAULT_COLOR_SEED);
     }
     #[test]
     fn settings_accept_follow_system_locale() {

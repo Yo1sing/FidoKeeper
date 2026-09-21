@@ -413,12 +413,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Preferences dco_decode_preferences(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return Preferences(
       locale: dco_decode_String(arr[0]),
       theme: dco_decode_String(arr[1]),
       hiddenAuthenticators: dco_decode_list_hidden_authenticator(arr[2]),
+      dynamicColor: dco_decode_bool(arr[3]),
+      colorSeed: dco_decode_String(arr[4]),
     );
   }
 
@@ -682,10 +684,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_hiddenAuthenticators = sse_decode_list_hidden_authenticator(
       deserializer,
     );
+    var var_dynamicColor = sse_decode_bool(deserializer);
+    var var_colorSeed = sse_decode_String(deserializer);
     return Preferences(
       locale: var_locale,
       theme: var_theme,
       hiddenAuthenticators: var_hiddenAuthenticators,
+      dynamicColor: var_dynamicColor,
+      colorSeed: var_colorSeed,
     );
   }
 
@@ -923,6 +929,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.locale, serializer);
     sse_encode_String(self.theme, serializer);
     sse_encode_list_hidden_authenticator(self.hiddenAuthenticators, serializer);
+    sse_encode_bool(self.dynamicColor, serializer);
+    sse_encode_String(self.colorSeed, serializer);
   }
 
   @protected

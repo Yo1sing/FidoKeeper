@@ -83,6 +83,8 @@ enum CommandKind {
   theme,
   locale,
   shutdown,
+  dynamicColor,
+  colorSeed,
 }
 
 class OperationInputs {

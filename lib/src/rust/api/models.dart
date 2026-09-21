@@ -128,11 +128,15 @@ class Preferences {
   final String locale;
   final String theme;
   final List<HiddenAuthenticator> hiddenAuthenticators;
+  final bool dynamicColor;
+  final String colorSeed;
 
   const Preferences({
     required this.locale,
     required this.theme,
     required this.hiddenAuthenticators,
+    this.dynamicColor = false,
+    this.colorSeed = '356859',
   });
 
   static Future<Preferences> default_() =>
@@ -140,7 +144,11 @@ class Preferences {
 
   @override
   int get hashCode =>
-      locale.hashCode ^ theme.hashCode ^ hiddenAuthenticators.hashCode;
+      locale.hashCode ^
+      theme.hashCode ^
+      hiddenAuthenticators.hashCode ^
+      dynamicColor.hashCode ^
+      colorSeed.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -149,7 +157,9 @@ class Preferences {
           runtimeType == other.runtimeType &&
           locale == other.locale &&
           theme == other.theme &&
-          hiddenAuthenticators == other.hiddenAuthenticators;
+          hiddenAuthenticators == other.hiddenAuthenticators &&
+          dynamicColor == other.dynamicColor &&
+          colorSeed == other.colorSeed;
 }
 
 enum Transport { usb, nfc, hid }

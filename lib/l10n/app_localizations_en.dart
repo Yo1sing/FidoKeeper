@@ -205,6 +205,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
+  String get dynamicColor => 'Dynamic color';
+
+  @override
   String get languageSystem => 'Follow system';
 
   @override

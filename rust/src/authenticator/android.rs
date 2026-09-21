@@ -238,8 +238,9 @@ pub extern "system" fn JNI_OnLoad(
     jni::sys::JNI_VERSION_1_6
 }
 
+// 符号必须与 Kotlin 包名 dev.yo1sing.fidokeeper 一致，否则 nativeRegister 会 UnsatisfiedLinkError。
 #[no_mangle]
-pub extern "system" fn Java_com_example_fidokeeper_FidoHost_nativeRegister(
+pub extern "system" fn Java_dev_yo1sing_fidokeeper_FidoHost_nativeRegister(
     mut env: JNIEnv,
     _class: JClass,
     host: JObject,
