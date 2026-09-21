@@ -465,6 +465,12 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get appearance;
 
+  /// No description provided for @dynamicColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Dynamic color'**
+  String get dynamicColor;
+
   /// No description provided for @languageSystem.
   ///
   /// In en, this message translates to:

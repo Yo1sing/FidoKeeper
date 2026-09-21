@@ -309,6 +309,8 @@ impl SseDecode for crate::api::keeper::CommandKind {
             17 => crate::api::keeper::CommandKind::Theme,
             18 => crate::api::keeper::CommandKind::Locale,
             19 => crate::api::keeper::CommandKind::Shutdown,
+            20 => crate::api::keeper::CommandKind::DynamicColor,
+            21 => crate::api::keeper::CommandKind::ColorSeed,
             _ => unreachable!("Invalid variant for CommandKind: {}", inner),
         };
     }
@@ -475,10 +477,14 @@ impl SseDecode for crate::api::models::Preferences {
         let mut var_theme = <String>::sse_decode(deserializer);
         let mut var_hiddenAuthenticators =
             <Vec<crate::api::models::HiddenAuthenticator>>::sse_decode(deserializer);
+        let mut var_dynamicColor = <bool>::sse_decode(deserializer);
+        let mut var_colorSeed = <String>::sse_decode(deserializer);
         return crate::api::models::Preferences {
             locale: var_locale,
             theme: var_theme,
             hidden_authenticators: var_hiddenAuthenticators,
+            dynamic_color: var_dynamicColor,
+            color_seed: var_colorSeed,
         };
     }
 }
@@ -645,6 +651,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::keeper::CommandKind {
             Self::Theme => 17.into_dart(),
             Self::Locale => 18.into_dart(),
             Self::Shutdown => 19.into_dart(),
+            Self::DynamicColor => 20.into_dart(),
+            Self::ColorSeed => 21.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -760,6 +768,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::models::Preferences {
             self.locale.into_into_dart().into_dart(),
             self.theme.into_into_dart().into_dart(),
             self.hidden_authenticators.into_into_dart().into_dart(),
+            self.dynamic_color.into_into_dart().into_dart(),
+            self.color_seed.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -880,6 +890,8 @@ impl SseEncode for crate::api::keeper::CommandKind {
                 crate::api::keeper::CommandKind::Theme => 17,
                 crate::api::keeper::CommandKind::Locale => 18,
                 crate::api::keeper::CommandKind::Shutdown => 19,
+                crate::api::keeper::CommandKind::DynamicColor => 20,
+                crate::api::keeper::CommandKind::ColorSeed => 21,
                 _ => {
                     unimplemented!("");
                 }
@@ -1006,6 +1018,8 @@ impl SseEncode for crate::api::models::Preferences {
             self.hidden_authenticators,
             serializer,
         );
+        <bool>::sse_encode(self.dynamic_color, serializer);
+        <String>::sse_encode(self.color_seed, serializer);
     }
 }
 

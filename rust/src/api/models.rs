@@ -56,6 +56,8 @@ pub struct Preferences {
     pub locale: String,
     pub theme: String,
     pub hidden_authenticators: Vec<HiddenAuthenticator>,
+    pub dynamic_color: bool,
+    pub color_seed: String,
 }
 
 impl Default for Preferences {
@@ -64,6 +66,8 @@ impl Default for Preferences {
             locale: "zh-CN".into(),
             theme: "system".into(),
             hidden_authenticators: Vec::new(),
+            dynamic_color: false,
+            color_seed: "356859".into(),
         }
     }
 }

@@ -198,7 +198,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
-  String get appearance => '配色';
+  String get appearance => '外观';
+
+  @override
+  String get dynamicColor => '动态取色';
 
   @override
   String get languageSystem => '跟随系统';
@@ -457,7 +460,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get language => '語言';
 
   @override
-  String get appearance => '配色';
+  String get appearance => '外觀';
+
+  @override
+  String get dynamicColor => '動態取色';
 
   @override
   String get languageSystem => '跟隨系統';

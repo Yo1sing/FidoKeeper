@@ -5,6 +5,7 @@ import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
 import '../src/rust/api/models.dart';
 import '../ui/callbacks.dart';
+import '../ui/color_presets.dart';
 import '../widgets/settings_sidebar.dart';
 import '../widgets/sliding_page_switcher.dart';
 
@@ -158,25 +159,63 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _appearanceSection(BuildContext context, AppLocalizations l10n) {
+    final preferences = widget.snapshot?.preferences;
+    final dynamicColor = preferences?.dynamicColor ?? false;
+    final selectedSeed = (preferences?.colorSeed ?? defaultColorSeed)
+        .toLowerCase();
+    final canEdit = !widget.busy && !widget.closing;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         DropdownButtonFormField<String>(
-          initialValue: widget.snapshot?.preferences.theme ?? 'system',
+          initialValue: preferences?.theme ?? 'system',
           decoration: InputDecoration(labelText: l10n.theme),
           items: [
             DropdownMenuItem(value: 'system', child: Text(l10n.themeSystem)),
             DropdownMenuItem(value: 'light', child: Text(l10n.themeLight)),
             DropdownMenuItem(value: 'dark', child: Text(l10n.themeDark)),
           ],
-          onChanged: widget.busy || widget.closing
-              ? null
-              : (value) {
+          onChanged: canEdit
+              ? (value) {
                   if (value != null) {
                     widget.onAction(backend.CommandKind.theme, value: value);
                   }
-                },
+                }
+              : null,
         ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.dynamicColor),
+          value: dynamicColor,
+          onChanged: canEdit
+              ? (value) => widget.onAction(
+                  backend.CommandKind.dynamicColor,
+                  value: value ? 'true' : 'false',
+                )
+              : null,
+        ),
+        if (!dynamicColor) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final color in colorPresets)
+                ColorPresetButton(
+                  key: ValueKey(colorSeedHex(color)),
+                  color: color,
+                  selected: colorSeedHex(color) == selectedSeed,
+                  onPressed: canEdit
+                      ? () => widget.onAction(
+                          backend.CommandKind.colorSeed,
+                          value: colorSeedHex(color),
+                        )
+                      : null,
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }

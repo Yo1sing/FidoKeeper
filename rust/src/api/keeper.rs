@@ -30,6 +30,8 @@ pub enum CommandKind {
     Theme,
     Locale,
     Shutdown,
+    DynamicColor,
+    ColorSeed,
 }
 
 // 输入要求属于操作协议，界面只负责渲染对应字段。
@@ -234,18 +236,39 @@ impl State {
                 self.query = value;
                 return Ok(());
             }
-            CommandKind::Theme | CommandKind::Locale => {
+            CommandKind::Theme
+            | CommandKind::Locale
+            | CommandKind::DynamicColor
+            | CommandKind::ColorSeed => {
                 let mut preferences = self.preferences.clone();
-                if kind == CommandKind::Theme {
-                    if !["system", "light", "dark"].contains(&value.as_str()) {
-                        return Err("无效主题".to_owned());
+                match kind {
+                    CommandKind::Theme => {
+                        if !["system", "light", "dark"].contains(&value.as_str()) {
+                            return Err("无效主题".to_owned());
+                        }
+                        preferences.theme = value;
                     }
-                    preferences.theme = value;
-                } else {
-                    if !preferences::SUPPORTED_LOCALES.contains(&value.as_str()) {
-                        return Err("无效语言".to_owned());
+                    CommandKind::Locale => {
+                        if !preferences::SUPPORTED_LOCALES.contains(&value.as_str()) {
+                            return Err("无效语言".to_owned());
+                        }
+                        preferences.locale = value;
                     }
-                    preferences.locale = value;
+                    CommandKind::DynamicColor => {
+                        preferences.dynamic_color = match value.as_str() {
+                            "true" => true,
+                            "false" => false,
+                            _ => return Err("无效动态取色".to_owned()),
+                        };
+                    }
+                    CommandKind::ColorSeed => {
+                        let seed = value.to_ascii_lowercase();
+                        if !preferences::COLOR_SEEDS.contains(&seed.as_str()) {
+                            return Err("无效配色".to_owned());
+                        }
+                        preferences.color_seed = seed;
+                    }
+                    _ => unreachable!(),
                 }
                 preferences::save(&preferences)?;
                 self.preferences = preferences;
@@ -780,6 +803,12 @@ mod tests {
         assert!(state.apply(command(CommandKind::Theme, "invalid")).is_err());
         assert!(state
             .apply(command(CommandKind::Locale, "invalid"))
+            .is_err());
+        assert!(state
+            .apply(command(CommandKind::DynamicColor, "maybe"))
+            .is_err());
+        assert!(state
+            .apply(command(CommandKind::ColorSeed, "ffffff"))
             .is_err());
         assert_eq!(state.preferences, Preferences::default());
     }

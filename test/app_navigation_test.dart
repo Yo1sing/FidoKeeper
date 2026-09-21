@@ -5,6 +5,7 @@ import 'package:fidokeeper/pages/settings_page.dart';
 import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
+import 'package:fidokeeper/ui/color_presets.dart';
 import 'package:fidokeeper/widgets/app_sidebar.dart';
 import 'package:fidokeeper/widgets/settings_sidebar.dart';
 import 'package:fidokeeper/widgets/system_glass.dart';
@@ -193,11 +194,15 @@ void main() {
     expect(find.byType(AppSidebar), findsOneWidget);
     expect(find.byType(BackdropFilter), findsOneWidget);
 
-    expect(find.text('配色'), findsOneWidget);
+    expect(find.text('外观'), findsOneWidget);
     expect(find.text('主题'), findsNothing);
-    await tester.tap(find.text('配色'));
+    await tester.tap(find.text('外观'));
     await tester.pumpAndSettle();
     expect(find.text('主题'), findsOneWidget);
+    expect(find.text('动态取色'), findsOneWidget);
+    expect(find.byType(Switch), findsOneWidget);
+    expect(find.byType(ColorPresetButton), findsNWidgets(6));
+    expect(find.textContaining('根据壁纸'), findsNothing);
     final dock = tester.getRect(find.byType(AppSidebar));
     final screen = tester.getRect(find.byType(Scaffold));
     expect(dock.top, greaterThanOrEqualTo(screen.bottom - 1));

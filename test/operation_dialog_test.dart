@@ -4,6 +4,7 @@ import 'package:fidokeeper/keeper_app.dart';
 import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/src/rust/api/models.dart';
 import 'package:fidokeeper/src/rust/frb_generated.dart';
+import 'package:fidokeeper/ui/color_presets.dart';
 import 'package:fidokeeper/widgets/app_sidebar.dart';
 import 'package:fidokeeper/widgets/closing_dialog.dart';
 import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
@@ -819,6 +820,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('开启动态取色后不显示预设色', (tester) async {
+    api.snapshot = api._copy(
+      preferences: const Preferences(
+        locale: 'zh-CN',
+        theme: 'light',
+        hiddenAuthenticators: [],
+        dynamicColor: true,
+      ),
+    );
+    await tester.pumpWidget(const KeeperApp(desktop: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('外观'));
+    await tester.pumpAndSettle();
+    expect(find.text('动态取色'), findsOneWidget);
+    expect(find.byType(ColorPresetButton), findsNothing);
+  });
+
   testWidgets('跨页面保留搜索内容并传递筛选、指纹和设置操作', (tester) async {
     final original = api.snapshot;
     api.snapshot = Snapshot(
@@ -867,7 +887,7 @@ void main() {
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     expect(find.byType(AppSidebar), findsOneWidget);
-    await tester.tap(find.text('配色'));
+    await tester.tap(find.text('外观'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('浅色'));
     await tester.pumpAndSettle();
@@ -875,6 +895,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(commands.last.kind, CommandKind.theme);
     expect(commands.last.value, 'dark');
+    expect(find.text('动态取色'), findsOneWidget);
+    expect(find.textContaining('根据壁纸'), findsNothing);
+    expect(find.byType(ColorPresetButton), findsNWidgets(6));
+    await tester.tap(find.byType(ColorPresetButton).at(1));
+    await tester.pumpAndSettle();
+    expect(commands.last.kind, CommandKind.colorSeed);
+    expect(commands.last.value, '1a73e8');
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(commands.last.kind, CommandKind.dynamicColor);
+    expect(commands.last.value, 'true');
 
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
