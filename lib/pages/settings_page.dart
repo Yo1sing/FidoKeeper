@@ -17,6 +17,8 @@ class SettingsPage extends StatefulWidget {
     required this.busy,
     required this.closing,
     required this.onAction,
+    this.compact = false,
+    this.onSubpageChanged,
   });
 
   final backend.Snapshot? snapshot;
@@ -24,13 +26,41 @@ class SettingsPage extends StatefulWidget {
   final bool closing;
   final RunAction onAction;
 
+  /// 移动端为 true：先显示入口列表，点进去再设置。桌面仍用侧栏。
+  final bool compact;
+  final VoidCallback? onSubpageChanged;
+
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  SettingsPageState createState() => SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
-  _SettingsSection _section = _SettingsSection.appearance;
+class SettingsPageState extends State<SettingsPage> {
+  _SettingsSection? _section;
   Future<PackageInfo?>? _packageInfoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.compact) {
+      _section = _SettingsSection.appearance;
+    }
+  }
+
+  String titleFor(AppLocalizations l10n) {
+    final section = _section;
+    if (section == null) return l10n.navSettings;
+    return _label(l10n, section);
+  }
+
+  /// 移动端子页返回列表。已在列表时返回 false，由外层关闭设置。
+  bool handleBack() {
+    if (!widget.compact || _section == null) return false;
+    setState(() => _section = null);
+    widget.onSubpageChanged?.call();
+    return true;
+  }
+
+  bool get inSubpage => widget.compact && _section != null;
 
   Future<PackageInfo?> _loadPackageInfo() async {
     try {
@@ -42,7 +72,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _selectSection(int index) {
-    final section = _SettingsSection.values[index];
+    _openSection(_SettingsSection.values[index]);
+  }
+
+  void _openSection(_SettingsSection section) {
     if (section == _section) return;
     setState(() {
       _section = section;
@@ -50,38 +83,45 @@ class _SettingsPageState extends State<SettingsPage> {
         _packageInfoFuture ??= _loadPackageInfo();
       }
     });
+    widget.onSubpageChanged?.call();
   }
+
+  String _label(AppLocalizations l10n, _SettingsSection section) =>
+      switch (section) {
+        _SettingsSection.appearance => l10n.appearance,
+        _SettingsSection.language => l10n.language,
+        _SettingsSection.hidden => l10n.hiddenAuthenticators,
+        _SettingsSection.about => l10n.about,
+      };
+
+  IconData _icon(_SettingsSection section) => switch (section) {
+    _SettingsSection.appearance => Icons.palette_outlined,
+    _SettingsSection.language => Icons.translate_outlined,
+    _SettingsSection.hidden => Icons.visibility_off_outlined,
+    _SettingsSection.about => Icons.info_outline,
+  };
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final compact = MediaQuery.sizeOf(context).width < 720;
+    final showingList = widget.compact && _section == null;
     final content = SlidingPageSwitcher(
-      index: _section.index,
+      index: widget.compact ? (_section?.index ?? -1) + 1 : _section!.index,
       child: KeyedSubtree(
         key: ValueKey(_section),
-        child: _buildSection(context, l10n),
+        child: showingList
+            ? _indexList(context, l10n)
+            : _buildSection(context, l10n, _section!),
       ),
     );
 
-    if (compact) {
-      return Column(
-        children: [
-          Expanded(child: content),
-          SettingsSidebar(
-            selectedIndex: _section.index,
-            onDestinationSelected: _selectSection,
-            bottom: true,
-          ),
-        ],
-      );
-    }
+    if (widget.compact) return content;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsSidebar(
-          selectedIndex: _section.index,
+          selectedIndex: _section!.index,
           onDestinationSelected: _selectSection,
         ),
         Expanded(child: content),
@@ -89,8 +129,27 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSection(BuildContext context, AppLocalizations l10n) {
-    return switch (_section) {
+  Widget _indexList(BuildContext context, AppLocalizations l10n) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        for (final section in _SettingsSection.values)
+          ListTile(
+            leading: Icon(_icon(section)),
+            title: Text(_label(l10n, section)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSection(section),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    AppLocalizations l10n,
+    _SettingsSection section,
+  ) {
+    return switch (section) {
       _SettingsSection.appearance => _appearanceSection(context, l10n),
       _SettingsSection.language => _languageSection(context, l10n),
       _SettingsSection.hidden => _hiddenSection(context, l10n),

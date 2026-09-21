@@ -436,9 +436,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'en-US');
-    expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Language'), findsNWidgets(2));
-    expect(find.text('Hidden authenticators'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
 
     await tester.tap(find.text('English').last);
@@ -447,11 +445,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'zh-TW');
-    expect(find.text('設定'), findsOneWidget);
     expect(find.text('語言'), findsNWidgets(2));
-    expect(find.text('已隱藏的認證器'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
     expect(find.text('Settings'), findsNothing);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('設定'), findsNWidgets(2));
+    expect(find.text('已隱藏的認證器'), findsOneWidget);
   });
 
   testWidgets('语言设为跟随系统时界面使用系统语言', (tester) async {
@@ -542,9 +543,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.last!.kind, CommandKind.locale);
     expect(api.last!.value, 'system');
-    expect(find.text('設定'), findsOneWidget);
     expect(find.text('語言'), findsNWidgets(2));
     expect(find.text('设置'), findsNothing);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('設定'), findsNWidgets(2));
   });
 
   testWidgets('忙碌时进入指纹页会在初始化后提交页面事件', (tester) async {
@@ -757,7 +760,7 @@ void main() {
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
     expect(find.text('已隐藏的认证器'), findsOneWidget);
-    expect(find.byType(AppSidebar), findsNothing);
+    expect(find.byType(AppSidebar), findsOneWidget);
 
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
@@ -863,7 +866,9 @@ void main() {
 
     await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
-    expect(find.byType(AppSidebar), findsNothing);
+    expect(find.byType(AppSidebar), findsOneWidget);
+    await tester.tap(find.text('配色'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('浅色'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('深色').last);
@@ -871,6 +876,8 @@ void main() {
     expect(commands.last.kind, CommandKind.theme);
     expect(commands.last.value, 'dark');
 
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(AppSidebar), findsOneWidget);

@@ -61,6 +61,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   String? _error;
   int _page = 0;
   bool _settingsOpen = false;
+  final _settingsKey = GlobalKey<SettingsPageState>();
   final _search = TextEditingController();
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
@@ -264,7 +265,10 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   }
 
   void _selectPage(int index) {
-    setState(() => _page = index);
+    setState(() {
+      _settingsOpen = false;
+      _page = index;
+    });
     // 移动端无独立刷新按钮，点「认证器」即扫描。
     if (!widget.desktop && index == 0 && !_busy && !_closing) {
       _act(backend.CommandKind.scan);
@@ -282,6 +286,11 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   void _closeSettings() {
     if (!_settingsOpen) return;
     setState(() => _settingsOpen = false);
+  }
+
+  void _onSettingsBack() {
+    if (_settingsKey.currentState?.handleBack() == true) return;
+    _closeSettings();
   }
 
   Widget _contentColumn(BuildContext context, {bool padForBottomNav = false}) {
@@ -393,10 +402,14 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       builder: (context) {
         final scheme = Theme.of(context).colorScheme;
         final l10n = context.l10n;
+        final mq = MediaQuery.of(context);
         final compact = !widget.desktop;
+        final inSettingsSubpage =
+            compact && (_settingsKey.currentState?.inSubpage ?? false);
         final nav = AppSidebar(
           selectedIndex: _page,
           bottom: compact,
+          settingsSelected: compact && _settingsOpen && !inSettingsSubpage,
           onDestinationSelected: _selectPage,
           onOpenSettings: _openSettings,
           onScanDevices: () => _act(backend.CommandKind.scan),
@@ -412,18 +425,35 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
                   Expanded(child: _contentColumn(context)),
                 ],
               );
-        final settingsContent = _pageWithError(
-          SettingsPage(
-            snapshot: _state,
-            busy: _busy,
-            closing: _closing,
-            onAction: _act,
-          ),
+        final settingsPage = SettingsPage(
+          key: _settingsKey,
+          compact: compact,
+          snapshot: _state,
+          busy: _busy,
+          closing: _closing,
+          onAction: _act,
+          onSubpageChanged: () => setState(() {}),
         );
+        final settingsContent = _pageWithError(
+          compact
+              ? MediaQuery(
+                  data: mq.copyWith(
+                    padding: mq.padding.copyWith(
+                      bottom:
+                          mq.padding.bottom +
+                          (inSettingsSubpage ? 0 : bottomNavOverlayExtent),
+                    ),
+                  ),
+                  child: settingsPage,
+                )
+              : settingsPage,
+        );
+        final settingsTitle =
+            _settingsKey.currentState?.titleFor(l10n) ?? l10n.navSettings;
         return PopScope(
           canPop: !_settingsOpen,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && _settingsOpen) _closeSettings();
+            if (!didPop && _settingsOpen) _onSettingsBack();
           },
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: SystemUiOverlayStyle(
@@ -438,19 +468,25 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
             ),
             child: Scaffold(
               backgroundColor: scheme.surface,
-              extendBody: compact && !_settingsOpen,
+              extendBody: compact,
               appBar: widget.desktop
                   ? DesktopTitleBar(
                       onBack: _settingsOpen ? _closeSettings : null,
                     )
                   : _settingsOpen
                   ? AppBar(
-                      title: Text(l10n.navSettings),
-                      leading: _AnimatedBackButton(onPressed: _closeSettings),
+                      title: Text(settingsTitle),
+                      leading: _AnimatedBackButton(
+                        key: const ValueKey('settings-back'),
+                        onPressed: _onSettingsBack,
+                      ),
                     )
                   : AppBar(title: const Text('FidoKeeper')),
-              bottomNavigationBar: compact && !_settingsOpen
-                  ? Material(color: Colors.transparent, child: nav)
+              bottomNavigationBar: compact
+                  ? SlidingDock(
+                      visible: !inSettingsSubpage,
+                      child: Material(color: Colors.transparent, child: nav),
+                    )
                   : null,
               body: DecoratedBox(
                 decoration: BoxDecoration(
@@ -491,7 +527,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
 }
 
 class _AnimatedBackButton extends StatefulWidget {
-  const _AnimatedBackButton({required this.onPressed});
+  const _AnimatedBackButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 

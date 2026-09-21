@@ -24,6 +24,7 @@ class AppSidebar extends StatelessWidget {
     this.scanEnabled = true,
     this.scanning = false,
     this.bottom = false,
+    this.settingsSelected = false,
   });
 
   final int selectedIndex;
@@ -35,6 +36,9 @@ class AppSidebar extends StatelessWidget {
 
   /// 移动端为 true，导航横排贴在屏幕底部。
   final bool bottom;
+
+  /// 移动端设置列表打开时高亮设置项。
+  final bool settingsSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +55,10 @@ class AppSidebar extends StatelessWidget {
       l10n.navSettings,
     );
     final safeBottom = bottom ? MediaQuery.paddingOf(context).bottom : 0.0;
+
+    final highlightIndex = settingsSelected
+        ? mainDestinations.length
+        : selectedIndex;
 
     Widget scanButton() => IconButton(
       tooltip: l10n.scanAgain,
@@ -76,11 +84,11 @@ class AppSidebar extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           top: vertical
-              ? selectedIndex * (_sideItemHeight + _itemGap)
+              ? highlightIndex * (_sideItemHeight + _itemGap)
               : _dockInset,
           bottom: vertical ? null : _dockInset,
           height: vertical ? _sideItemHeight : null,
-          left: vertical ? 0 : selectedIndex * itemExtent + _dockInset,
+          left: vertical ? 0 : highlightIndex * itemExtent + _dockInset,
           right: vertical ? 0 : null,
           width: vertical ? null : itemExtent - _dockInset * 2,
           child: DecoratedBox(
@@ -97,7 +105,7 @@ class AppSidebar extends StatelessWidget {
       icon: mainDestinations[index].$1,
       selectedIcon: mainDestinations[index].$2,
       label: mainDestinations[index].$3,
-      selected: selectedIndex == index,
+      selected: !settingsSelected && selectedIndex == index,
       vertical: vertical,
       onTap: () => onDestinationSelected(index),
       trailing: !bottom && !vertical && index == 0 && selectedIndex == 0
@@ -109,7 +117,7 @@ class AppSidebar extends StatelessWidget {
       icon: settingsDestination.$1,
       selectedIcon: settingsDestination.$2,
       label: settingsDestination.$3,
-      selected: false,
+      selected: settingsSelected,
       vertical: vertical,
       onTap: onOpenSettings,
     );
@@ -253,6 +261,28 @@ class _NavItem extends StatelessWidget {
                   ),
                 ),
         ),
+      ),
+    );
+  }
+}
+
+/// 底栏滑出屏幕底部，不从树上摘掉，避免突然消失。
+class SlidingDock extends StatelessWidget {
+  const SlidingDock({super.key, required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedSlide(
+        offset: visible ? Offset.zero : const Offset(0, 1),
+        duration: reduce ? Duration.zero : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: child,
       ),
     );
   }
