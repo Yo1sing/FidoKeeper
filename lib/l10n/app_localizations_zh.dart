@@ -198,6 +198,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
+  String get appearance => '配色';
+
+  @override
   String get languageSystem => '跟随系统';
 
   @override
@@ -211,6 +214,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hiddenAuthenticators => '已隐藏的认证器';
+
+  @override
+  String get noHiddenAuthenticators => '没有已隐藏的认证器';
 
   @override
   String get showAgain => '恢复显示';
@@ -250,6 +256,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get maximizeWindow => '最大化';
+
+  @override
+  String get about => '关于';
+
+  @override
+  String get aboutDescription => 'FIDO2 安全密钥管理工具';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -445,6 +457,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get language => '語言';
 
   @override
+  String get appearance => '配色';
+
+  @override
   String get languageSystem => '跟隨系統';
 
   @override
@@ -458,6 +473,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get hiddenAuthenticators => '已隱藏的認證器';
+
+  @override
+  String get noHiddenAuthenticators => '沒有已隱藏的認證器';
 
   @override
   String get showAgain => '恢復顯示';
@@ -497,4 +515,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get maximizeWindow => '最大化';
+
+  @override
+  String get about => '關於';
+
+  @override
+  String get aboutDescription => 'FIDO2 安全金鑰管理工具';
 }

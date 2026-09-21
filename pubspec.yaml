@@ -41,6 +41,7 @@ dependencies:
   rust_lib_fidokeeper:
     path: rust_builder
   flutter_rust_bridge: 2.13.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

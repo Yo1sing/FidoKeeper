@@ -19,6 +19,7 @@ class AppSidebar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.onOpenSettings,
     this.onScanDevices,
     this.scanEnabled = true,
     this.scanning = false,
@@ -27,6 +28,7 @@ class AppSidebar extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final VoidCallback onOpenSettings;
   final VoidCallback? onScanDevices;
   final bool scanEnabled;
   final bool scanning;
@@ -38,12 +40,16 @@ class AppSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final destinations = [
+    final mainDestinations = [
       (Icons.key_outlined, Icons.key, l10n.navAuthenticators),
       (Icons.password_outlined, Icons.password, l10n.navCredentials),
       (Icons.fingerprint_outlined, Icons.fingerprint, l10n.navFingerprints),
-      (Icons.settings_outlined, Icons.settings, l10n.navSettings),
     ];
+    final settingsDestination = (
+      Icons.settings_outlined,
+      Icons.settings,
+      l10n.navSettings,
+    );
     final safeBottom = bottom ? MediaQuery.paddingOf(context).bottom : 0.0;
 
     Widget scanButton() => IconButton(
@@ -65,80 +71,89 @@ class AppSidebar extends StatelessWidget {
           : Icon(Icons.refresh, color: scheme.primary),
     );
 
-    Widget items(double itemExtent, {required bool vertical}) {
-      return Stack(
-        children: [
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            // 底栏高亮四边同一 inset，圆角与 dock 一致，避免上下比左右更窄。
-            top: vertical
-                ? selectedIndex * (_sideItemHeight + _itemGap)
-                : _dockInset,
-            bottom: vertical ? null : _dockInset,
-            height: vertical ? _sideItemHeight : null,
-            left: vertical ? 0 : selectedIndex * itemExtent + _dockInset,
-            right: vertical ? 0 : null,
-            width: vertical ? null : itemExtent - _dockInset * 2,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(
-                  vertical ? _sideHighlightRadius : _dockRadius,
-                ),
+    Widget highlight({required bool vertical, required double itemExtent}) =>
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          top: vertical
+              ? selectedIndex * (_sideItemHeight + _itemGap)
+              : _dockInset,
+          bottom: vertical ? null : _dockInset,
+          height: vertical ? _sideItemHeight : null,
+          left: vertical ? 0 : selectedIndex * itemExtent + _dockInset,
+          right: vertical ? 0 : null,
+          width: vertical ? null : itemExtent - _dockInset * 2,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(
+                vertical ? _sideHighlightRadius : _dockRadius,
               ),
             ),
           ),
-          if (vertical)
-            Column(
-              children: [
-                for (var i = 0; i < destinations.length; i++) ...[
-                  if (i > 0) const SizedBox(height: _itemGap),
-                  _NavItem(
-                    icon: destinations[i].$1,
-                    selectedIcon: destinations[i].$2,
-                    label: destinations[i].$3,
-                    selected: selectedIndex == i,
-                    vertical: false,
-                    onTap: () => onDestinationSelected(i),
-                    trailing: !bottom && i == 0 && selectedIndex == 0
-                        ? scanButton()
-                        : null,
-                  ),
-                ],
-              ],
-            )
-          else
-            Row(
-              children: [
-                for (var i = 0; i < destinations.length; i++)
-                  Expanded(
-                    child: _NavItem(
-                      icon: destinations[i].$1,
-                      selectedIcon: destinations[i].$2,
-                      label: destinations[i].$3,
-                      selected: selectedIndex == i,
-                      vertical: true,
-                      onTap: () => onDestinationSelected(i),
-                    ),
-                  ),
-              ],
-            ),
-        ],
-      );
-    }
+        );
+
+    Widget mainItem(int index, {required bool vertical}) => _NavItem(
+      icon: mainDestinations[index].$1,
+      selectedIcon: mainDestinations[index].$2,
+      label: mainDestinations[index].$3,
+      selected: selectedIndex == index,
+      vertical: vertical,
+      onTap: () => onDestinationSelected(index),
+      trailing: !bottom && !vertical && index == 0 && selectedIndex == 0
+          ? scanButton()
+          : null,
+    );
+
+    Widget settingsItem({required bool vertical}) => _NavItem(
+      icon: settingsDestination.$1,
+      selectedIcon: settingsDestination.$2,
+      label: settingsDestination.$3,
+      selected: false,
+      vertical: vertical,
+      onTap: onOpenSettings,
+    );
 
     final nav = bottom
         ? SizedBox(
             height: _bottomItemHeight,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final extent = constraints.maxWidth / destinations.length;
-                return items(extent, vertical: false);
+                final itemCount = mainDestinations.length + 1;
+                final extent = constraints.maxWidth / itemCount;
+                return Stack(
+                  children: [
+                    highlight(vertical: false, itemExtent: extent),
+                    Row(
+                      children: [
+                        for (var i = 0; i < mainDestinations.length; i++)
+                          Expanded(child: mainItem(i, vertical: true)),
+                        Expanded(child: settingsItem(vertical: true)),
+                      ],
+                    ),
+                  ],
+                );
               },
             ),
           )
-        : SizedBox(width: 188, child: items(0, vertical: true));
+        : SizedBox(
+            width: 188,
+            child: Stack(
+              children: [
+                highlight(vertical: true, itemExtent: 0),
+                Column(
+                  children: [
+                    for (var i = 0; i < mainDestinations.length; i++) ...[
+                      if (i > 0) const SizedBox(height: _itemGap),
+                      mainItem(i, vertical: false),
+                    ],
+                    const Spacer(),
+                    settingsItem(vertical: false),
+                  ],
+                ),
+              ],
+            ),
+          );
 
     return Padding(
       padding: bottom
