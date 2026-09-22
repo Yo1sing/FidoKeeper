@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// 与 Rust `COLOR_SEEDS` 保持一致；关闭动态取色时用这些种子生成配色。
-const defaultColorSeed = '356859';
+import '../src/rust/api/keeper.dart' as backend;
 
-const colorPresets = <Color>[
-  Color(0xff356859),
-  Color(0xff1a73e8),
-  Color(0xff6750a4),
-  Color(0xff0f766e),
-  Color(0xffc2410c),
-  Color(0xffbe123c),
+/// 关闭动态取色时的默认种子，取值来自 Rust。
+String get defaultColorSeed => backend.defaultColorSeed();
+
+/// 可选种子色，列表由 Rust 维护，避免和校验名单不一致。
+List<Color> get colorPresets => [
+  for (final hex in backend.colorSeeds()) colorFromSeedHex(hex),
 ];
 
 String colorSeedHex(Color color) =>

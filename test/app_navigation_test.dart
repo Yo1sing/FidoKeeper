@@ -31,6 +31,8 @@ class _FakeApi extends Fake implements RustLibApi {
         hiddenAuthenticators: [],
       ),
       query: '',
+      credentialsLoaded: false,
+      fingerprintsLoaded: false,
     );
   }
 
@@ -40,7 +42,31 @@ class _FakeApi extends Fake implements RustLibApi {
         askPin: false,
         changePin: false,
         requiresConfirmation: false,
+        touchesHardware: false,
+        mutatesDevice: false,
       );
+
+  @override
+  int crateApiKeeperCloseTimeoutMs({CommandKind? kind}) => 3000;
+
+  @override
+  List<String> crateApiKeeperColorSeeds() => const [
+    '356859',
+    '1a73e8',
+    '6750a4',
+    '0f766e',
+    'c2410c',
+    'be123c',
+  ];
+
+  @override
+  String crateApiKeeperDefaultColorSeed() => '356859';
+
+  @override
+  List<String> crateApiKeeperSupportedLocales() => const ['zh-CN'];
+
+  @override
+  int crateApiKeeperFingerprintNameMaxBytes() => 64;
 
   @override
   int crateApiKeeperEnrollCaptured() => 0;

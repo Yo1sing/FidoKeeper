@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fidokeeper/src/rust/api/keeper.dart';
 import 'package:fidokeeper/widgets/fingerprint_enroll_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,7 +52,10 @@ void main() {
         isNull,
       );
       enrollment.completeError(
-        cleanupFails ? '指纹录入已取消；取消录入失败：设备未响应，请重新插拔认证器' : '指纹录入已取消',
+        CommandError(
+          cancelled: !cleanupFails,
+          message: cleanupFails ? '指纹录入已取消；取消录入失败：设备未响应，请重新插拔认证器' : '指纹录入已取消',
+        ),
       );
       await tester.pumpAndSettle();
       if (cleanupFails) {

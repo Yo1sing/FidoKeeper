@@ -44,6 +44,8 @@ class FakeApi extends Fake implements RustLibApi {
       hiddenAuthenticators: [],
     ),
     query: '',
+    credentialsLoaded: true,
+    fingerprintsLoaded: false,
   );
   Snapshot _copy({
     DeviceSummary? active,
@@ -61,6 +63,8 @@ class FakeApi extends Fake implements RustLibApi {
     templates: snapshot.templates,
     preferences: preferences ?? snapshot.preferences,
     query: snapshot.query,
+    credentialsLoaded: snapshot.credentialsLoaded,
+    fingerprintsLoaded: snapshot.fingerprintsLoaded,
   );
 
   @override
@@ -73,7 +77,67 @@ class FakeApi extends Fake implements RustLibApi {
           CommandKind.deleteCredential,
           CommandKind.deleteBio,
         ].contains(kind),
+        touchesHardware: const [
+          CommandKind.initialize,
+          CommandKind.scan,
+          CommandKind.connect,
+          CommandKind.listCredentials,
+          CommandKind.listBio,
+          CommandKind.enterFingerprints,
+          CommandKind.changePin,
+          CommandKind.reset,
+          CommandKind.deleteCredential,
+          CommandKind.deleteBio,
+          CommandKind.renameBio,
+          CommandKind.enrollBio,
+        ].contains(kind),
+        mutatesDevice: const [
+          CommandKind.changePin,
+          CommandKind.reset,
+          CommandKind.deleteCredential,
+          CommandKind.deleteBio,
+          CommandKind.renameBio,
+          CommandKind.enrollBio,
+        ].contains(kind),
       );
+
+  @override
+  int crateApiKeeperCloseTimeoutMs({CommandKind? kind}) =>
+      kind != null &&
+          const [
+            CommandKind.changePin,
+            CommandKind.reset,
+            CommandKind.deleteCredential,
+            CommandKind.deleteBio,
+            CommandKind.renameBio,
+            CommandKind.enrollBio,
+          ].contains(kind)
+      ? 30000
+      : 3000;
+
+  @override
+  List<String> crateApiKeeperColorSeeds() => const [
+    '356859',
+    '1a73e8',
+    '6750a4',
+    '0f766e',
+    'c2410c',
+    'be123c',
+  ];
+
+  @override
+  String crateApiKeeperDefaultColorSeed() => '356859';
+
+  @override
+  List<String> crateApiKeeperSupportedLocales() => const [
+    'system',
+    'zh-CN',
+    'zh-TW',
+    'en-US',
+  ];
+
+  @override
+  int crateApiKeeperFingerprintNameMaxBytes() => 64;
 
   @override
   int crateApiKeeperEnrollCaptured() => captured;
@@ -117,12 +181,14 @@ class FakeApi extends Fake implements RustLibApi {
         templates: [
           for (final template in snapshot.templates)
             if (template.id == command.value)
-              BioTemplateSummary(id: template.id, name: command.newPin.trim())
+              BioTemplateSummary(id: template.id, name: command.name.trim())
             else
               template,
         ],
         preferences: snapshot.preferences,
         query: snapshot.query,
+        credentialsLoaded: snapshot.credentialsLoaded,
+        fingerprintsLoaded: snapshot.fingerprintsLoaded,
       );
       return snapshot;
     }
@@ -279,7 +345,8 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     await tester.pump();
     expect(destroyed, isFalse);
-    await tester.pump(const Duration(seconds: 12));
+    // 写操作要等满设备 I/O 上限，而不是旧的 15 秒。
+    await tester.pump(const Duration(seconds: 27));
     await tester.pump();
     expect(destroyed, isTrue);
 
@@ -804,6 +871,8 @@ void main() {
         ],
       ),
       query: original.query,
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
@@ -860,6 +929,8 @@ void main() {
       templates: original.templates,
       preferences: original.preferences,
       query: original.query,
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     final commands = <Command>[];
     api.operation = (command) async {
@@ -933,6 +1004,8 @@ void main() {
       templates: const [],
       preferences: api.snapshot.preferences,
       query: '',
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
@@ -972,6 +1045,8 @@ void main() {
       templates: original.templates,
       preferences: original.preferences,
       query: original.query,
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
@@ -1030,6 +1105,8 @@ void main() {
       templates: const [BioTemplateSummary(id: 't1', name: 'finger')],
       preferences: api.snapshot.preferences,
       query: '',
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     await tester.pumpWidget(const KeeperApp(desktop: false));
     await tester.pumpAndSettle();
@@ -1051,7 +1128,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.last!.kind, CommandKind.renameBio);
     expect(api.last!.value, 't1');
-    expect(api.last!.newPin, '右手食指');
+    expect(api.last!.name, '右手食指');
     expect(find.text('右手食指'), findsOneWidget);
     expect(find.text('finger'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -1078,6 +1155,8 @@ void main() {
       templates: const [],
       preferences: api.snapshot.preferences,
       query: '',
+      credentialsLoaded: true,
+      fingerprintsLoaded: false,
     );
     final result = Completer<Snapshot>();
     api.operation = (command) {

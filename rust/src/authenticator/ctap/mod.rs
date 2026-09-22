@@ -108,13 +108,101 @@ impl<T: ApduIO> CtapLink for NfcLink<T> {
     }
 }
 
+struct CachedPinToken {
+    path: String,
+    permissions: u8,
+    token: Zeroizing<Vec<u8>>,
+}
+
 pub struct CtapAuthenticator<S: DeviceSource> {
     source: S,
+    pin_token: Option<CachedPinToken>,
 }
 
 impl<S: DeviceSource> CtapAuthenticator<S> {
     pub fn new(source: S) -> Self {
-        Self { source }
+        Self {
+            source,
+            pin_token: None,
+        }
+    }
+
+    fn cached_covers(&self, path: &str, perms: u8) -> bool {
+        self.pin_token
+            .as_ref()
+            .is_some_and(|token| token.path == path && token.permissions & perms == perms)
+    }
+
+    /// 同一路径上权限足够时直接复用令牌，避免每次操作都做密钥协商。
+    fn token_for(
+        &mut self,
+        session: &mut Session,
+        path: &str,
+        pin: &str,
+        perms: u8,
+        refresh: bool,
+    ) -> Result<Zeroizing<Vec<u8>>, String> {
+        if !refresh {
+            if let Some(token) = &self.pin_token {
+                if token.path == path && token.permissions & perms == perms {
+                    return Ok(token.token.clone());
+                }
+            }
+        }
+        let wanted = if refresh {
+            perms
+        } else {
+            self.pin_token
+                .as_ref()
+                .filter(|token| token.path == path)
+                .map(|token| token.permissions | perms)
+                .unwrap_or(perms)
+        };
+        let token = session.pin_token(pin, wanted)?;
+        // 旧版 getPinToken 不带权限位，一份令牌覆盖后续全部管理操作。
+        let permissions = if session.info.pin_token { wanted } else { 0xff };
+        self.pin_token = Some(CachedPinToken {
+            path: path.to_owned(),
+            permissions,
+            token: token.clone(),
+        });
+        Ok(token)
+    }
+
+    fn pin_attempt<T>(
+        &mut self,
+        path: &str,
+        pin: &str,
+        perms: u8,
+        refresh: bool,
+        body: &mut impl FnMut(&mut Session, &PinProtocol, &Zeroizing<Vec<u8>>) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let mut session = self.session(path)?;
+        let proto = session.protocol()?;
+        let token = self.token_for(&mut session, path, pin, perms, refresh)?;
+        body(&mut session, &proto, &token)
+    }
+
+    fn with_pin<T>(
+        &mut self,
+        path: &str,
+        pin: &str,
+        perms: u8,
+        body: &mut impl FnMut(&mut Session, &PinProtocol, &Zeroizing<Vec<u8>>) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let used_cache = self.cached_covers(path, perms);
+        match self.pin_attempt(path, pin, perms, false, body) {
+            Err(error) if used_cache && super::stale_pin_token(&error) => {
+                let wanted = self
+                    .pin_token
+                    .as_ref()
+                    .map(|token| token.permissions | perms)
+                    .unwrap_or(perms);
+                self.pin_token = None;
+                self.pin_attempt(path, pin, wanted, true, body)
+            }
+            other => other,
+        }
     }
 
     fn session(&mut self, path: &str) -> Result<Session, String> {
@@ -147,6 +235,15 @@ impl<S: DeviceSource> CtapAuthenticator<S> {
 }
 
 impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
+    fn reusable_pin_token(&self) -> bool {
+        true
+    }
+    fn authenticate(&mut self, path: &str, pin: &str, permissions: u32) -> Result<(), String> {
+        self.with_pin(path, pin, permissions as u8, &mut |_, _, _| Ok(()))
+    }
+    fn discard_pin_token(&mut self) {
+        self.pin_token = None;
+    }
     fn discover(&mut self, cancelled: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String> {
         let listed = self.source.enumerate()?;
         if listed.is_empty() {
@@ -175,62 +272,61 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         cancelled: &dyn Fn() -> bool,
     ) -> Result<Inventory, String> {
         super::ensure_running(cancelled)?;
-        let mut session = self.session(path)?;
-        if !session.info.credman {
-            return Err("认证器不支持凭证管理".into());
-        }
-        let token = session.pin_token(pin, PIN_PERM_CRED)?;
-        let proto = session.protocol()?;
-        let metadata = session.credman(0x01, None, Some((&proto, &token)))?;
-        let existing = cbor::as_u64(cbor::map_get(&metadata, 0x01).ok_or("缺少凭证数量")?)
-            .ok_or("凭证数量无效")?;
-        let remaining = cbor::as_u64(cbor::map_get(&metadata, 0x02).ok_or("缺少剩余容量")?)
-            .ok_or("剩余容量无效")?;
-        let mut credentials = Vec::new();
-        for rp in session.enumerate_rps(&proto, &token)? {
-            super::ensure_running(cancelled)?;
-            let rp_id = cbor::map_get_text(&rp.entity, "id");
-            if rp_id.is_empty() {
-                return Err("设备返回空网站标识".into());
+        self.with_pin(path, pin, PIN_PERM_CRED, &mut |session, proto, token| {
+            if !session.info.credman {
+                return Err("认证器不支持凭证管理".into());
             }
-            let rp_name = cbor::map_get_text(&rp.entity, "name");
-            for cred in session.enumerate_creds(&rp.id_hash, &proto, &token)? {
-                credentials.push(CredentialSummary {
-                    id: encode_hex(&cred.id)?,
-                    rp_id: rp_id.clone(),
-                    rp_name: if rp_name.is_empty() {
-                        rp_id.clone()
-                    } else {
-                        rp_name.clone()
-                    },
-                    user_name: cbor::map_get_text(&cred.user, "name"),
-                    user_display_name: cbor::map_get_text(&cred.user, "displayName"),
-                });
+            let metadata = session.credman(0x01, None, Some((proto, token)))?;
+            let existing = cbor::as_u64(cbor::map_get(&metadata, 0x01).ok_or("缺少凭证数量")?)
+                .ok_or("凭证数量无效")?;
+            let remaining = cbor::as_u64(cbor::map_get(&metadata, 0x02).ok_or("缺少剩余容量")?)
+                .ok_or("剩余容量无效")?;
+            let mut credentials = Vec::new();
+            for rp in session.enumerate_rps(proto, token)? {
+                super::ensure_running(cancelled)?;
+                let rp_id = cbor::map_get_text(&rp.entity, "id");
+                if rp_id.is_empty() {
+                    return Err("设备返回空网站标识".into());
+                }
+                let rp_name = cbor::map_get_text(&rp.entity, "name");
+                for cred in session.enumerate_creds(&rp.id_hash, proto, token)? {
+                    credentials.push(CredentialSummary {
+                        id: encode_hex(&cred.id)?,
+                        rp_id: rp_id.clone(),
+                        rp_name: if rp_name.is_empty() {
+                            rp_id.clone()
+                        } else {
+                            rp_name.clone()
+                        },
+                        user_name: cbor::map_get_text(&cred.user, "name"),
+                        user_display_name: cbor::map_get_text(&cred.user, "displayName"),
+                    });
+                }
             }
-        }
-        credentials
-            .sort_by(|a, b| (&a.rp_id, &a.user_name, &a.id).cmp(&(&b.rp_id, &b.user_name, &b.id)));
-        Ok(Inventory {
-            existing,
-            remaining,
-            credentials,
+            credentials.sort_by(|a, b| {
+                (&a.rp_id, &a.user_name, &a.id).cmp(&(&b.rp_id, &b.user_name, &b.id))
+            });
+            Ok(Inventory {
+                existing,
+                remaining,
+                credentials,
+            })
         })
     }
 
     fn remove_credential(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String> {
         let id = decode_hex(id)?;
-        let mut session = self.session(path)?;
-        let token = session.pin_token(pin, PIN_PERM_CRED)?;
-        let proto = session.protocol()?;
-        session.credman(
-            0x06,
-            Some(cbor::map(vec![(
-                cbor::integer(0x02),
-                cbor::credential_descriptor(&id),
-            )])),
-            Some((&proto, &token)),
-        )?;
-        Ok(())
+        self.with_pin(path, pin, PIN_PERM_CRED, &mut |session, proto, token| {
+            session.credman(
+                0x06,
+                Some(cbor::map(vec![(
+                    cbor::integer(0x02),
+                    cbor::credential_descriptor(&id),
+                )])),
+                Some((proto, token)),
+            )?;
+            Ok(())
+        })
     }
 
     fn update_pin(&mut self, path: &str, current: &str, replacement: &str) -> Result<(), String> {
@@ -238,40 +334,44 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         if !session.info.pin {
             return Err("认证器不支持 PIN".into());
         }
-        if session.info.pin_set {
+        let changed = if session.info.pin_set {
             session.change_pin(current, replacement)
         } else {
             session.set_pin(replacement)
+        };
+        if changed.is_ok() {
+            // 改 PIN 后旧令牌是否仍有效由设备决定，下次操作用新 PIN 重新协商。
+            self.pin_token = None;
         }
+        changed
     }
 
     fn fingerprints(&mut self, path: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String> {
-        let mut session = self.session(path)?;
-        if !session.info.bio {
-            return Err("此设备不支持指纹管理".into());
-        }
-        let token = session.pin_token(pin, PIN_PERM_BIO)?;
-        let proto = session.protocol()?;
-        let response = match session.bio(0x04, None, Some((&proto, &token))) {
-            Ok(value) => value,
-            Err(error) if is_empty_ctap(&error) => return Ok(vec![]),
-            Err(error) => return Err(error),
-        };
-        let mut result = Vec::new();
-        if let Some(items) = cbor::map_get(&response, 0x07).and_then(cbor::as_array) {
-            for item in items {
-                let id = cbor::as_bytes(cbor::map_get(item, 0x01).ok_or("设备返回无效指纹")?)
-                    .ok_or("设备返回无效指纹")?;
-                let name = cbor::map_get(item, 0x02)
-                    .and_then(cbor::as_text)
-                    .unwrap_or_default();
-                result.push(BioTemplateSummary {
-                    id: encode_hex(&id)?,
-                    name,
-                });
+        self.with_pin(path, pin, PIN_PERM_BIO, &mut |session, proto, token| {
+            if !session.info.bio {
+                return Err("此设备不支持指纹管理".into());
             }
-        }
-        Ok(result)
+            let response = match session.bio(0x04, None, Some((proto, token))) {
+                Ok(value) => value,
+                Err(error) if is_empty_ctap(&error) => return Ok(vec![]),
+                Err(error) => return Err(error),
+            };
+            let mut result = Vec::new();
+            if let Some(items) = cbor::map_get(&response, 0x07).and_then(cbor::as_array) {
+                for item in items {
+                    let id = cbor::as_bytes(cbor::map_get(item, 0x01).ok_or("设备返回无效指纹")?)
+                        .ok_or("设备返回无效指纹")?;
+                    let name = cbor::map_get(item, 0x02)
+                        .and_then(cbor::as_text)
+                        .unwrap_or_default();
+                    result.push(BioTemplateSummary {
+                        id: encode_hex(&id)?,
+                        name,
+                    });
+                }
+            }
+            Ok(result)
+        })
     }
 
     fn enroll(
@@ -282,59 +382,60 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         cancelled: &dyn Fn() -> bool,
     ) -> Result<(), String> {
         super::enrollment::check_cancelled(cancelled)?;
-        let mut session = self.session(path)?;
-        let token = session.pin_token(pin, PIN_PERM_BIO)?;
-        let proto = session.protocol()?;
-        let result = (|| {
-            super::enrollment::check_cancelled(cancelled)?;
-            let begin = session.bio(
-                0x01,
-                Some(cbor::map(vec![(
-                    cbor::integer(0x03),
-                    cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
-                )])),
-                Some((&proto, &token)),
-            )?;
-            let mut pending = capture_result(&begin, on_sample)?;
-            let template = cbor::as_bytes(cbor::map_get(&begin, 0x04).ok_or("缺少指纹标识")?)
-                .ok_or("指纹标识无效")?;
-            let deadline = Instant::now() + Duration::from_secs(180);
-            while pending {
+        self.with_pin(path, pin, PIN_PERM_BIO, &mut |session, proto, token| {
+            let result = (|| {
                 super::enrollment::check_cancelled(cancelled)?;
-                if Instant::now() >= deadline {
-                    return Err("指纹录入超时，请重试".into());
-                }
-                let next = session.bio(
-                    0x02,
-                    Some(cbor::map(vec![
-                        (cbor::integer(0x01), cbor::bytes(template.clone())),
-                        (
-                            cbor::integer(0x03),
-                            cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
-                        ),
-                    ])),
-                    Some((&proto, &token)),
+                let begin = session.bio(
+                    0x01,
+                    Some(cbor::map(vec![(
+                        cbor::integer(0x03),
+                        cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
+                    )])),
+                    Some((proto, token)),
                 )?;
-                pending = capture_result(&next, on_sample)?;
-            }
-            Ok(())
-        })();
-        super::enrollment::finish(result, cancelled, || {
-            session.bio(0x03, None, None).map(|_| ())
+                let mut pending = capture_result(&begin, on_sample)?;
+                let template = cbor::as_bytes(cbor::map_get(&begin, 0x04).ok_or("缺少指纹标识")?)
+                    .ok_or("指纹标识无效")?;
+                let deadline = Instant::now() + Duration::from_secs(180);
+                while pending {
+                    super::enrollment::check_cancelled(cancelled)?;
+                    if Instant::now() >= deadline {
+                        return Err("指纹录入超时，请重试".into());
+                    }
+                    let next = session.bio(
+                        0x02,
+                        Some(cbor::map(vec![
+                            (cbor::integer(0x01), cbor::bytes(template.clone())),
+                            (
+                                cbor::integer(0x03),
+                                cbor::integer(super::enrollment::CAPTURE_WAIT_MS as i64),
+                            ),
+                        ])),
+                        Some((proto, token)),
+                    )?;
+                    pending = capture_result(&next, on_sample)?;
+                }
+                Ok(())
+            })();
+            super::enrollment::finish(result, cancelled, || {
+                session.bio(0x03, None, None).map(|_| ())
+            })
         })
     }
 
     fn remove_fingerprint(&mut self, path: &str, pin: &str, id: &str) -> Result<(), String> {
         let id = decode_hex(id)?;
-        let mut session = self.session(path)?;
-        let token = session.pin_token(pin, PIN_PERM_BIO)?;
-        let proto = session.protocol()?;
-        session.bio(
-            0x06,
-            Some(cbor::map(vec![(cbor::integer(0x01), cbor::bytes(id))])),
-            Some((&proto, &token)),
-        )?;
-        Ok(())
+        self.with_pin(path, pin, PIN_PERM_BIO, &mut |session, proto, token| {
+            session.bio(
+                0x06,
+                Some(cbor::map(vec![(
+                    cbor::integer(0x01),
+                    cbor::bytes(id.clone()),
+                )])),
+                Some((proto, token)),
+            )?;
+            Ok(())
+        })
     }
 
     fn rename_fingerprint(
@@ -345,23 +446,23 @@ impl<S: DeviceSource> Authenticator for CtapAuthenticator<S> {
         name: &str,
     ) -> Result<(), String> {
         let id = decode_hex(id)?;
-        let mut session = self.session(path)?;
-        let token = session.pin_token(pin, PIN_PERM_BIO)?;
-        let proto = session.protocol()?;
-        session.bio(
-            0x05,
-            Some(cbor::map(vec![
-                (cbor::integer(0x01), cbor::bytes(id)),
-                (cbor::integer(0x02), cbor::text(name.to_owned())),
-            ])),
-            Some((&proto, &token)),
-        )?;
-        Ok(())
+        self.with_pin(path, pin, PIN_PERM_BIO, &mut |session, proto, token| {
+            session.bio(
+                0x05,
+                Some(cbor::map(vec![
+                    (cbor::integer(0x01), cbor::bytes(id.clone())),
+                    (cbor::integer(0x02), cbor::text(name.to_owned())),
+                ])),
+                Some((proto, token)),
+            )?;
+            Ok(())
+        })
     }
 
     fn reset(&mut self, path: &str) -> Result<(), String> {
         let mut session = self.session(path)?;
         session.send(CTAP_RESET, None)?;
+        self.pin_token = None;
         Ok(())
     }
 }
@@ -671,7 +772,9 @@ fn ctap_error(code: u8) -> String {
         0x2E => "没有可管理的凭证",
         0x31 => "PIN 码错误，请重试",
         0x32 => "PIN 已锁定，请查阅设备说明，不要继续重试",
+        0x33 => "PIN 令牌已失效，请重试",
         0x34 => "PIN 验证暂时锁定，请重新插入设备",
+        0x38 => "PIN 令牌已过期，请重试",
         0x35 => "尚未设置 PIN",
         0x36 => "需要 PIN 验证",
         _ => return format!("设备错误 {code}（CTAP2）"),

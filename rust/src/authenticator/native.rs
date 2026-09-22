@@ -121,6 +121,11 @@ pub struct RawApi {
     pub fido_dev_set_pin:
         unsafe extern "C" fn(*mut fido_dev_t, *const c_char, *const c_char) -> c_int,
     pub fido_dev_set_timeout: unsafe extern "C" fn(*mut fido_dev_t, c_int) -> c_int,
+    pub fido_dev_get_puat:
+        Option<unsafe extern "C" fn(*mut fido_dev_t, u32, *const c_char, *const c_char) -> c_int>,
+    pub fido_dev_set_puat: Option<unsafe extern "C" fn(*mut fido_dev_t, *const u8, usize) -> c_int>,
+    pub fido_dev_puat_ptr: Option<unsafe extern "C" fn(*const fido_dev_t) -> *const u8>,
+    pub fido_dev_puat_len: Option<unsafe extern "C" fn(*const fido_dev_t) -> usize>,
     pub fido_dev_supports_credman: unsafe extern "C" fn(*const fido_dev_t) -> bool,
     pub fido_dev_supports_pin: unsafe extern "C" fn(*const fido_dev_t) -> bool,
     pub fido_init: unsafe extern "C" fn(c_int) -> (),
@@ -201,6 +206,11 @@ impl RawApi {
             fido_dev_reset: *library.get::<unsafe extern "C" fn(*mut fido_dev_t) -> c_int>(b"fido_dev_reset\0").map_err(|e| format!("缺少 libfido2 符号 fido_dev_reset：{e}"))?,
             fido_dev_set_pin: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, *const c_char, *const c_char) -> c_int>(b"fido_dev_set_pin\0").map_err(|e| format!("缺少 libfido2 符号 fido_dev_set_pin：{e}"))?,
             fido_dev_set_timeout: *library.get::<unsafe extern "C" fn(*mut fido_dev_t, c_int) -> c_int>(b"fido_dev_set_timeout\0").map_err(|e| format!("缺少 libfido2 符号 fido_dev_set_timeout：{e}"))?,
+            // 1.16 之前没有 PUAT。缺符号时退回每次传递 PIN，不因此拒绝启动。
+            fido_dev_get_puat: optional_symbol(&library, b"fido_dev_get_puat\0"),
+            fido_dev_set_puat: optional_symbol(&library, b"fido_dev_set_puat\0"),
+            fido_dev_puat_ptr: optional_symbol(&library, b"fido_dev_puat_ptr\0"),
+            fido_dev_puat_len: optional_symbol(&library, b"fido_dev_puat_len\0"),
             fido_dev_supports_credman: *library.get::<unsafe extern "C" fn(*const fido_dev_t) -> bool>(b"fido_dev_supports_credman\0").map_err(|e| format!("缺少 libfido2 符号 fido_dev_supports_credman：{e}"))?,
             fido_dev_supports_pin: *library.get::<unsafe extern "C" fn(*const fido_dev_t) -> bool>(b"fido_dev_supports_pin\0").map_err(|e| format!("缺少 libfido2 符号 fido_dev_supports_pin：{e}"))?,
             fido_init: *library.get::<unsafe extern "C" fn(c_int) -> ()>(b"fido_init\0").map_err(|e| format!("缺少 libfido2 符号 fido_init：{e}"))?,
@@ -217,7 +227,9 @@ impl RawApi {
         let reason = match code {
             0x31 => "PIN 码错误，请重试".to_owned(),
             0x32 => "PIN 已锁定，请查阅设备说明，不要继续重试".to_owned(),
+            0x33 => "PIN 令牌已失效，请重试".to_owned(),
             0x34 => "PIN 验证暂时锁定，请重新插入设备".to_owned(),
+            0x38 => "PIN 令牌已过期，请重试".to_owned(),
             _ => unsafe {
                 let message = (self.fido_strerr)(code);
                 if message.is_null() {
@@ -229,6 +241,25 @@ impl RawApi {
         };
         Err(format!("{reason}（libfido2: {code}）"))
     }
+    pub fn puat(&self) -> Option<PuatApi> {
+        Some(PuatApi {
+            get: self.fido_dev_get_puat?,
+            set: self.fido_dev_set_puat?,
+            ptr: self.fido_dev_puat_ptr?,
+            len: self.fido_dev_puat_len?,
+        })
+    }
+}
+
+pub struct PuatApi {
+    pub get: unsafe extern "C" fn(*mut fido_dev_t, u32, *const c_char, *const c_char) -> c_int,
+    pub set: unsafe extern "C" fn(*mut fido_dev_t, *const u8, usize) -> c_int,
+    pub ptr: unsafe extern "C" fn(*const fido_dev_t) -> *const u8,
+    pub len: unsafe extern "C" fn(*const fido_dev_t) -> usize,
+}
+
+fn optional_symbol<T: Copy>(library: &Library, name: &[u8]) -> Option<T> {
+    unsafe { library.get(name).ok().map(|symbol| *symbol) }
 }
 
 unsafe fn open_library() -> Result<Library, String> {

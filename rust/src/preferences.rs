@@ -26,10 +26,9 @@ fn location() -> Result<PathBuf, String> {
 /// 可保存的语言标识；"system" 表示跟随系统语言，由界面层解析。
 pub(crate) const SUPPORTED_LOCALES: &[&str] = &["system", "zh-CN", "zh-TW", "en-US"];
 
-/// 关闭动态取色时可选的种子色；须与 Flutter `colorPresets` 一致。
-pub(crate) const COLOR_SEEDS: &[&str] = &[
-    "356859", "1a73e8", "6750a4", "0f766e", "c2410c", "be123c",
-];
+/// 关闭动态取色时可选的种子色。界面直接使用这份列表。
+pub(crate) const COLOR_SEEDS: &[&str] =
+    &["356859", "1a73e8", "6750a4", "0f766e", "c2410c", "be123c"];
 pub(crate) const DEFAULT_COLOR_SEED: &str = "356859";
 
 fn decode(data: &[u8]) -> Result<Preferences, String> {

@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 1091761564;
+  int get rustContentHash => -1216109504;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -84,15 +84,25 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 abstract class RustLibApi extends BaseApi {
   bool crateApiKeeperCancelEnrollment();
 
+  int crateApiKeeperCloseTimeoutMs({CommandKind? kind});
+
+  List<String> crateApiKeeperColorSeeds();
+
+  String crateApiKeeperDefaultColorSeed();
+
   Future<Snapshot> crateApiKeeperDispatch({required Command command});
 
   int crateApiKeeperEnrollCaptured();
+
+  int crateApiKeeperFingerprintNameMaxBytes();
 
   Future<void> crateApiSimpleInitApp();
 
   OperationInputs crateApiKeeperOperationInputs({required CommandKind kind});
 
   Future<Preferences> crateApiModelsPreferencesDefault();
+
+  List<String> crateApiKeeperSupportedLocales();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -126,6 +136,73 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "cancel_enrollment", argNames: []);
 
   @override
+  int crateApiKeeperCloseTimeoutMs({CommandKind? kind}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_opt_box_autoadd_command_kind(kind, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_32,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperCloseTimeoutMsConstMeta,
+        argValues: [kind],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperCloseTimeoutMsConstMeta =>
+      const TaskConstMeta(debugName: "close_timeout_ms", argNames: ["kind"]);
+
+  @override
+  List<String> crateApiKeeperColorSeeds() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperColorSeedsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperColorSeedsConstMeta =>
+      const TaskConstMeta(debugName: "color_seeds", argNames: []);
+
+  @override
+  String crateApiKeeperDefaultColorSeed() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperDefaultColorSeedConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperDefaultColorSeedConstMeta =>
+      const TaskConstMeta(debugName: "default_color_seed", argNames: []);
+
+  @override
   Future<Snapshot> crateApiKeeperDispatch({required Command command}) {
     return handler.executeNormal(
       NormalTask(
@@ -135,13 +212,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 5,
             port: port_,
           );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_snapshot,
-          decodeErrorData: sse_decode_String,
+          decodeErrorData: sse_decode_command_error,
         ),
         constMeta: kCrateApiKeeperDispatchConstMeta,
         argValues: [command],
@@ -159,7 +236,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_8,
@@ -176,6 +253,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "enroll_captured", argNames: []);
 
   @override
+  int crateApiKeeperFingerprintNameMaxBytes() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_16,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperFingerprintNameMaxBytesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperFingerprintNameMaxBytesConstMeta =>
+      const TaskConstMeta(
+        debugName: "fingerprint_name_max_bytes",
+        argNames: [],
+      );
+
+  @override
   Future<void> crateApiSimpleInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -184,7 +286,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 8,
             port: port_,
           );
         },
@@ -209,7 +311,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_command_kind(kind, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_operation_inputs,
@@ -234,7 +336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 10,
             port: port_,
           );
         },
@@ -251,6 +353,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiModelsPreferencesDefaultConstMeta =>
       const TaskConstMeta(debugName: "preferences_default", argNames: []);
+
+  @override
+  List<String> crateApiKeeperSupportedLocales() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiKeeperSupportedLocalesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKeeperSupportedLocalesConstMeta =>
+      const TaskConstMeta(debugName: "supported_locales", argNames: []);
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -283,6 +407,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CommandKind dco_decode_box_autoadd_command_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_command_kind(raw);
+  }
+
+  @protected
   DeviceSummary dco_decode_box_autoadd_device_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_device_summary(raw);
@@ -292,8 +422,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Command dco_decode_command(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return Command(
       kind: dco_decode_command_kind(arr[0]),
       value: dco_decode_String(arr[1]),
@@ -301,6 +431,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       newPin: dco_decode_String(arr[3]),
       confirmPin: dco_decode_String(arr[4]),
       confirmed: dco_decode_bool(arr[5]),
+      name: dco_decode_String(arr[6]),
+    );
+  }
+
+  @protected
+  CommandError dco_decode_command_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CommandError(
+      cancelled: dco_decode_bool(arr[0]),
+      message: dco_decode_String(arr[1]),
     );
   }
 
@@ -361,6 +504,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<BioTemplateSummary> dco_decode_list_bio_template_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_bio_template_summary).toList();
@@ -394,13 +543,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   OperationInputs dco_decode_operation_inputs(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return OperationInputs(
       askPin: dco_decode_bool(arr[0]),
       changePin: dco_decode_bool(arr[1]),
       requiresConfirmation: dco_decode_bool(arr[2]),
+      touchesHardware: dco_decode_bool(arr[3]),
+      mutatesDevice: dco_decode_bool(arr[4]),
     );
+  }
+
+  @protected
+  CommandKind? dco_decode_opt_box_autoadd_command_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_command_kind(raw);
   }
 
   @protected
@@ -428,8 +585,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Snapshot dco_decode_snapshot(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return Snapshot(
       canManageCredentials: dco_decode_bool(arr[0]),
       canManageFingerprints: dco_decode_bool(arr[1]),
@@ -441,6 +598,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       templates: dco_decode_list_bio_template_summary(arr[7]),
       preferences: dco_decode_preferences(arr[8]),
       query: dco_decode_String(arr[9]),
+      credentialsLoaded: dco_decode_bool(arr[10]),
+      fingerprintsLoaded: dco_decode_bool(arr[11]),
     );
   }
 
@@ -448,6 +607,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Transport dco_decode_transport(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return Transport.values[raw as int];
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -498,6 +669,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CommandKind sse_decode_box_autoadd_command_kind(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_command_kind(deserializer));
+  }
+
+  @protected
   DeviceSummary sse_decode_box_autoadd_device_summary(
     SseDeserializer deserializer,
   ) {
@@ -514,6 +693,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_newPin = sse_decode_String(deserializer);
     var var_confirmPin = sse_decode_String(deserializer);
     var var_confirmed = sse_decode_bool(deserializer);
+    var var_name = sse_decode_String(deserializer);
     return Command(
       kind: var_kind,
       value: var_value,
@@ -521,7 +701,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       newPin: var_newPin,
       confirmPin: var_confirmPin,
       confirmed: var_confirmed,
+      name: var_name,
     );
+  }
+
+  @protected
+  CommandError sse_decode_command_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_cancelled = sse_decode_bool(deserializer);
+    var var_message = sse_decode_String(deserializer);
+    return CommandError(cancelled: var_cancelled, message: var_message);
   }
 
   @protected
@@ -585,6 +774,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -656,11 +857,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_askPin = sse_decode_bool(deserializer);
     var var_changePin = sse_decode_bool(deserializer);
     var var_requiresConfirmation = sse_decode_bool(deserializer);
+    var var_touchesHardware = sse_decode_bool(deserializer);
+    var var_mutatesDevice = sse_decode_bool(deserializer);
     return OperationInputs(
       askPin: var_askPin,
       changePin: var_changePin,
       requiresConfirmation: var_requiresConfirmation,
+      touchesHardware: var_touchesHardware,
+      mutatesDevice: var_mutatesDevice,
     );
+  }
+
+  @protected
+  CommandKind? sse_decode_opt_box_autoadd_command_kind(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_command_kind(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -708,6 +926,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_templates = sse_decode_list_bio_template_summary(deserializer);
     var var_preferences = sse_decode_preferences(deserializer);
     var var_query = sse_decode_String(deserializer);
+    var var_credentialsLoaded = sse_decode_bool(deserializer);
+    var var_fingerprintsLoaded = sse_decode_bool(deserializer);
     return Snapshot(
       canManageCredentials: var_canManageCredentials,
       canManageFingerprints: var_canManageFingerprints,
@@ -719,6 +939,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       templates: var_templates,
       preferences: var_preferences,
       query: var_query,
+      credentialsLoaded: var_credentialsLoaded,
+      fingerprintsLoaded: var_fingerprintsLoaded,
     );
   }
 
@@ -727,6 +949,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return Transport.values[inner];
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
   }
 
   @protected
@@ -775,6 +1009,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_command_kind(
+    CommandKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_command_kind(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_device_summary(
     DeviceSummary self,
     SseSerializer serializer,
@@ -792,6 +1035,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.newPin, serializer);
     sse_encode_String(self.confirmPin, serializer);
     sse_encode_bool(self.confirmed, serializer);
+    sse_encode_String(self.name, serializer);
+  }
+
+  @protected
+  void sse_encode_command_error(CommandError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.cancelled, serializer);
+    sse_encode_String(self.message, serializer);
   }
 
   @protected
@@ -839,6 +1090,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
   }
 
   @protected
@@ -908,6 +1168,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.askPin, serializer);
     sse_encode_bool(self.changePin, serializer);
     sse_encode_bool(self.requiresConfirmation, serializer);
+    sse_encode_bool(self.touchesHardware, serializer);
+    sse_encode_bool(self.mutatesDevice, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_command_kind(
+    CommandKind? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_command_kind(self, serializer);
+    }
   }
 
   @protected
@@ -946,12 +1221,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_bio_template_summary(self.templates, serializer);
     sse_encode_preferences(self.preferences, serializer);
     sse_encode_String(self.query, serializer);
+    sse_encode_bool(self.credentialsLoaded, serializer);
+    sse_encode_bool(self.fingerprintsLoaded, serializer);
   }
 
   @protected
   void sse_encode_transport(Transport self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
+  }
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
   }
 
   @protected

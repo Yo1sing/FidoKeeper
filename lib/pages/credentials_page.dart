@@ -15,6 +15,8 @@ class CredentialsPage extends StatelessWidget {
     required this.onAction,
     required this.onPrompt,
     required this.searchController,
+    required this.onSearchChanged,
+    required this.onSearchSubmitted,
   });
 
   final backend.Snapshot? snapshot;
@@ -23,6 +25,8 @@ class CredentialsPage extends StatelessWidget {
   final RunAction onAction;
   final PromptOperation onPrompt;
   final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -59,54 +63,61 @@ class CredentialsPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              l10n.credentialsQuota(
-                snapshot!.existing.toString(),
-                snapshot!.remaining.toString(),
-              ),
-            ),
-            TextField(
-              controller: searchController,
-              enabled: !busy && !closing,
-              decoration: InputDecoration(
-                labelText: l10n.searchWebsiteOrUser,
-                prefixIcon: const Icon(Icons.search),
-              ),
-              onSubmitted: (query) =>
-                  onAction(backend.CommandKind.filter, value: query),
-            ),
-            const SizedBox(height: 16),
-            for (final credential in snapshot!.credentials)
-              Card(
-                child: ListTile(
-                  title: Text(credential.rpName),
-                  subtitle: Text(
-                    '${credential.rpId}\n${credential.userName} ${credential.userDisplayName}',
-                  ),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    tooltip: l10n.deleteCredential,
-                    onPressed: busy || closing
-                        ? null
-                        : () => onPrompt(
-                            context,
-                            backend.CommandKind.deleteCredential,
-                            l10n.permanentlyDeleteCredential,
-                            value: credential.id,
-                            detail: l10n.deleteCredentialDetail(
-                              credential.rpId,
-                              credential.userName,
-                            ),
-                          ),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
+            if (snapshot?.credentialsLoaded != true)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else ...[
+              Text(
+                l10n.credentialsQuota(
+                  snapshot!.existing.toString(),
+                  snapshot!.remaining.toString(),
                 ),
               ),
-            if (snapshot!.credentials.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(l10n.noMatchingCredentials),
+              TextField(
+                controller: searchController,
+                enabled: !closing,
+                decoration: InputDecoration(
+                  labelText: l10n.searchWebsiteOrUser,
+                  prefixIcon: const Icon(Icons.search),
+                ),
+                onChanged: onSearchChanged,
+                onSubmitted: onSearchSubmitted,
               ),
+              const SizedBox(height: 16),
+              for (final credential in snapshot!.credentials)
+                Card(
+                  child: ListTile(
+                    title: Text(credential.rpName),
+                    subtitle: Text(
+                      '${credential.rpId}\n${credential.userName} ${credential.userDisplayName}',
+                    ),
+                    isThreeLine: true,
+                    trailing: IconButton(
+                      tooltip: l10n.deleteCredential,
+                      onPressed: busy || closing
+                          ? null
+                          : () => onPrompt(
+                              context,
+                              backend.CommandKind.deleteCredential,
+                              l10n.permanentlyDeleteCredential,
+                              value: credential.id,
+                              detail: l10n.deleteCredentialDetail(
+                                credential.rpId,
+                                credential.userName,
+                              ),
+                            ),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ),
+                ),
+              if (snapshot!.credentials.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(l10n.noMatchingCredentials),
+                ),
+            ],
           ],
         ],
       ],

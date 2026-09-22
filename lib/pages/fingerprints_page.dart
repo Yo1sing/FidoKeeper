@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../l10n/locale_preference.dart';
 import '../src/rust/api/keeper.dart' as backend;
@@ -108,7 +111,7 @@ class FingerprintsPage extends StatelessWidget {
     await onAction(
       backend.CommandKind.renameBio,
       value: template.id,
-      newPin: name,
+      name: name,
     );
   }
 }
@@ -150,7 +153,9 @@ class _RenameFingerprintDialogState extends State<_RenameFingerprintDialog> {
         child: TextField(
           controller: _name,
           autofocus: true,
-          maxLength: 64,
+          inputFormatters: [
+            _Utf8ByteLimiter(backend.fingerprintNameMaxBytes()),
+          ],
           decoration: InputDecoration(labelText: l10n.fingerprintName),
           onSubmitted: (_) => _submit(),
         ),
@@ -162,6 +167,31 @@ class _RenameFingerprintDialogState extends State<_RenameFingerprintDialog> {
         ),
         FilledButton(onPressed: _submit, child: Text(l10n.save)),
       ],
+    );
+  }
+}
+
+/// 名称上限按 UTF-8 字节计，和设备侧以及 Rust 校验一致。
+class _Utf8ByteLimiter extends TextInputFormatter {
+  _Utf8ByteLimiter(this.maxBytes);
+
+  final int maxBytes;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (utf8.encode(newValue.text).length <= maxBytes) return newValue;
+    var end = newValue.text.length;
+    while (end > 0 &&
+        utf8.encode(newValue.text.substring(0, end)).length > maxBytes) {
+      end--;
+    }
+    final text = newValue.text.substring(0, end);
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

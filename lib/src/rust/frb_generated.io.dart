@@ -35,10 +35,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Command dco_decode_box_autoadd_command(dynamic raw);
 
   @protected
+  CommandKind dco_decode_box_autoadd_command_kind(dynamic raw);
+
+  @protected
   DeviceSummary dco_decode_box_autoadd_device_summary(dynamic raw);
 
   @protected
   Command dco_decode_command(dynamic raw);
+
+  @protected
+  CommandError dco_decode_command_error(dynamic raw);
 
   @protected
   CommandKind dco_decode_command_kind(dynamic raw);
@@ -54,6 +60,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
 
   @protected
   List<BioTemplateSummary> dco_decode_list_bio_template_summary(dynamic raw);
@@ -74,6 +83,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OperationInputs dco_decode_operation_inputs(dynamic raw);
 
   @protected
+  CommandKind? dco_decode_opt_box_autoadd_command_kind(dynamic raw);
+
+  @protected
   DeviceSummary? dco_decode_opt_box_autoadd_device_summary(dynamic raw);
 
   @protected
@@ -84,6 +96,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Transport dco_decode_transport(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
 
   @protected
   BigInt dco_decode_u_64(dynamic raw);
@@ -109,12 +127,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Command sse_decode_box_autoadd_command(SseDeserializer deserializer);
 
   @protected
+  CommandKind sse_decode_box_autoadd_command_kind(SseDeserializer deserializer);
+
+  @protected
   DeviceSummary sse_decode_box_autoadd_device_summary(
     SseDeserializer deserializer,
   );
 
   @protected
   Command sse_decode_command(SseDeserializer deserializer);
+
+  @protected
+  CommandError sse_decode_command_error(SseDeserializer deserializer);
 
   @protected
   CommandKind sse_decode_command_kind(SseDeserializer deserializer);
@@ -132,6 +156,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
   List<BioTemplateSummary> sse_decode_list_bio_template_summary(
@@ -160,6 +187,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OperationInputs sse_decode_operation_inputs(SseDeserializer deserializer);
 
   @protected
+  CommandKind? sse_decode_opt_box_autoadd_command_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DeviceSummary? sse_decode_opt_box_autoadd_device_summary(
     SseDeserializer deserializer,
   );
@@ -172,6 +204,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Transport sse_decode_transport(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
@@ -198,6 +236,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_command(Command self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_command_kind(
+    CommandKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_device_summary(
     DeviceSummary self,
     SseSerializer serializer,
@@ -205,6 +249,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_command(Command self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_command_error(CommandError self, SseSerializer serializer);
 
   @protected
   void sse_encode_command_kind(CommandKind self, SseSerializer serializer);
@@ -226,6 +273,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_bio_template_summary(
@@ -264,6 +314,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_command_kind(
+    CommandKind? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_device_summary(
     DeviceSummary? self,
     SseSerializer serializer,
@@ -277,6 +333,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_transport(Transport self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);

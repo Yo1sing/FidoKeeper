@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../l10n/locale_preference.dart';
+import '../src/rust/api/keeper.dart' as backend;
+import '../ui/callbacks.dart';
 import 'fingerprint_enroll_animation.dart';
 
 export 'fingerprint_enroll_animation.dart';
@@ -72,13 +74,13 @@ class _FingerprintEnrollDialogState extends State<FingerprintEnrollDialog> {
     } catch (failure) {
       if (!mounted) return;
       _poll?.cancel();
-      if (_cancelling && failure.toString() == '指纹录入已取消') {
+      if (_cancelling && failure is backend.CommandError && failure.cancelled) {
         Navigator.pop(context, false);
         return;
       }
       setState(() {
         _pending = false;
-        _error = failure.toString();
+        _error = backendMessage(failure);
       });
     }
   }

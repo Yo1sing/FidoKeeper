@@ -1,7 +1,11 @@
 use crate::api::models::{
     BioTemplateSummary, CredentialSummary, DeviceSummary, HiddenAuthenticator, Preferences,
 };
-use crate::authenticator::{platform_authenticator, Authenticator, Inventory};
+use crate::authenticator::enrollment::CANCELLED;
+use crate::authenticator::{
+    platform_authenticator, Authenticator, Inventory, DEVICE_TIMEOUT_MS, PIN_PERM_BIO,
+    PIN_PERM_CRED,
+};
 use crate::preferences;
 use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
@@ -40,10 +44,36 @@ pub struct OperationInputs {
     pub ask_pin: bool,
     pub change_pin: bool,
     pub requires_confirmation: bool,
+    /// 会打开设备。界面用它占用忙碌状态；筛选和偏好设置不占。
+    pub touches_hardware: bool,
+    /// 会改设备内容。关闭时要等满一次设备 I/O，避免写到一半进程退出。
+    pub mutates_device: bool,
 }
+
+pub const FINGERPRINT_NAME_MAX_BYTES: usize = 64;
+const READ_CLOSE_TIMEOUT_MS: u32 = 3_000;
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn operation_inputs(kind: CommandKind) -> OperationInputs {
+    let mutates_device = matches!(
+        kind,
+        CommandKind::ChangePin
+            | CommandKind::Reset
+            | CommandKind::DeleteCredential
+            | CommandKind::DeleteBio
+            | CommandKind::RenameBio
+            | CommandKind::EnrollBio
+    );
+    let touches_hardware = mutates_device
+        || matches!(
+            kind,
+            CommandKind::Initialize
+                | CommandKind::Scan
+                | CommandKind::Connect
+                | CommandKind::ListCredentials
+                | CommandKind::ListBio
+                | CommandKind::EnterFingerprints
+        );
     OperationInputs {
         ask_pin: kind == CommandKind::Connect,
         change_pin: kind == CommandKind::ChangePin,
@@ -51,7 +81,51 @@ pub fn operation_inputs(kind: CommandKind) -> OperationInputs {
             kind,
             CommandKind::Reset | CommandKind::DeleteCredential | CommandKind::DeleteBio
         ),
+        touches_hardware,
+        mutates_device,
     }
+}
+
+/// 写操作等待当前这次设备调用结束；读取类超时后可以先退出，句柄随进程回收。
+#[flutter_rust_bridge::frb(sync)]
+pub fn close_timeout_ms(kind: Option<CommandKind>) -> u32 {
+    if kind.is_some_and(|kind| operation_inputs(kind).mutates_device) {
+        DEVICE_TIMEOUT_MS as u32
+    } else {
+        READ_CLOSE_TIMEOUT_MS
+    }
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn color_seeds() -> Vec<String> {
+    preferences::COLOR_SEEDS
+        .iter()
+        .map(|seed| (*seed).to_owned())
+        .collect()
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn default_color_seed() -> String {
+    preferences::DEFAULT_COLOR_SEED.to_owned()
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn supported_locales() -> Vec<String> {
+    preferences::SUPPORTED_LOCALES
+        .iter()
+        .map(|code| (*code).to_owned())
+        .collect()
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn fingerprint_name_max_bytes() -> u16 {
+    FINGERPRINT_NAME_MAX_BYTES as u16
+}
+
+#[derive(Clone, Debug)]
+pub struct CommandError {
+    pub cancelled: bool,
+    pub message: String,
 }
 
 #[flutter_rust_bridge::frb(sync)]
@@ -73,6 +147,8 @@ pub struct Command {
     pub new_pin: String,
     pub confirm_pin: String,
     pub confirmed: bool,
+    /// 指纹新名称。和 PIN 分开，避免调用方把名称写进 PIN 字段。
+    pub name: String,
 }
 
 #[derive(Clone)]
@@ -87,6 +163,8 @@ pub struct Snapshot {
     pub templates: Vec<BioTemplateSummary>,
     pub preferences: Preferences,
     pub query: String,
+    pub credentials_loaded: bool,
+    pub fingerprints_loaded: bool,
 }
 
 struct State {
@@ -98,6 +176,8 @@ struct State {
     preferences: Preferences,
     query: String,
     unlocked_pin: Option<zeroize::Zeroizing<String>>,
+    credentials_loaded: bool,
+    fingerprints_loaded: bool,
 }
 
 impl State {
@@ -111,6 +191,8 @@ impl State {
             preferences: Preferences::default(),
             query: String::new(),
             unlocked_pin: None,
+            credentials_loaded: false,
+            fingerprints_loaded: false,
         }
     }
     fn snapshot(&self) -> Snapshot {
@@ -152,6 +234,8 @@ impl State {
             templates: self.templates.clone(),
             preferences: self.preferences.clone(),
             query: self.query.clone(),
+            credentials_loaded: self.credentials_loaded,
+            fingerprints_loaded: self.fingerprints_loaded,
         }
     }
     fn scan(&mut self) -> Result<(), String> {
@@ -167,10 +251,13 @@ impl State {
         Ok(())
     }
     fn disconnect(&mut self) {
+        self.hardware.discard_pin_token();
         self.active = None;
         self.inventory = None;
         self.templates.clear();
         self.unlocked_pin = None;
+        self.credentials_loaded = false;
+        self.fingerprints_loaded = false;
     }
     fn active(&self) -> Result<DeviceSummary, String> {
         self.active
@@ -196,6 +283,7 @@ impl State {
             new_pin,
             confirm_pin,
             confirmed,
+            name,
         } = command;
         let pin = zeroize::Zeroizing::new(pin);
         let new_pin = zeroize::Zeroizing::new(new_pin);
@@ -213,10 +301,12 @@ impl State {
                 return Ok(());
             }
             CommandKind::EnterFingerprints => {
-                if self.snapshot().can_manage_fingerprints {
+                // 同一把已解锁的钥匙、列表没有改过时不再打开设备。
+                if self.snapshot().can_manage_fingerprints && !self.fingerprints_loaded {
                     let device = self.active()?;
                     let pin = self.session_pin(&pin)?;
                     self.templates = self.hardware.fingerprints(&device.path, &pin)?;
+                    self.fingerprints_loaded = true;
                 }
                 return Ok(());
             }
@@ -317,26 +407,42 @@ impl State {
                 if !device.credential_management && !device.fingerprint {
                     return Err("此设备不支持凭证管理或指纹".into());
                 }
-                let switching = self.active.as_ref().is_none_or(|a| a.path != device.path);
-                let inventory = if device.credential_management {
-                    Some(self.hardware.inventory(&device.path, &pin, &cancel_requested)?)
-                } else {
-                    None
-                };
-                let templates = if device.fingerprint && inventory.is_none() {
-                    self.hardware.fingerprints(&device.path, &pin)?
-                } else if switching {
-                    Vec::new()
-                } else {
-                    self.templates.clone()
-                };
-                self.active = Some(device);
-                if let Some(inventory) = inventory {
-                    self.inventory = Some(inventory);
-                } else if switching {
-                    self.inventory = None;
-                }
+                let permissions = (u32::from(device.credential_management) * PIN_PERM_CRED)
+                    | (u32::from(device.fingerprint) * PIN_PERM_BIO);
+                // 验证失败时保留原选择和已读取的列表，成功后再切换。
+                let (inventory, templates, credentials_loaded, fingerprints_loaded) =
+                    if self.hardware.reusable_pin_token() {
+                        self.hardware
+                            .authenticate(&device.path, &pin, permissions)?;
+                        (
+                            None,
+                            Vec::new(),
+                            !device.credential_management,
+                            !device.fingerprint,
+                        )
+                    } else if device.credential_management {
+                        (
+                            Some(
+                                self.hardware
+                                    .inventory(&device.path, &pin, &cancel_requested)?,
+                            ),
+                            Vec::new(),
+                            true,
+                            !device.fingerprint,
+                        )
+                    } else {
+                        (
+                            None,
+                            self.hardware.fingerprints(&device.path, &pin)?,
+                            true,
+                            true,
+                        )
+                    };
+                self.inventory = inventory;
                 self.templates = templates;
+                self.credentials_loaded = credentials_loaded;
+                self.fingerprints_loaded = fingerprints_loaded;
+                self.active = Some(device);
                 self.unlocked_pin = Some(zeroize::Zeroizing::new((*pin).clone()));
             }
             CommandKind::ListCredentials => {
@@ -345,7 +451,12 @@ impl State {
                     return Err("此设备不支持凭证管理或 PIN".into());
                 }
                 let pin = self.session_pin(&pin)?;
-                self.inventory = Some(self.hardware.inventory(&device.path, &pin, &cancel_requested)?);
+                self.inventory = Some(self.hardware.inventory(
+                    &device.path,
+                    &pin,
+                    &cancel_requested,
+                )?);
+                self.credentials_loaded = true;
             }
             CommandKind::DeleteCredential => {
                 let device = self.active()?;
@@ -385,7 +496,8 @@ impl State {
                 let pin = self.session_pin(&pin)?;
                 match kind {
                     CommandKind::ListBio => {
-                        self.templates = self.hardware.fingerprints(&device.path, &pin)?
+                        self.templates = self.hardware.fingerprints(&device.path, &pin)?;
+                        self.fingerprints_loaded = true;
                     }
                     CommandKind::EnrollBio => {
                         ENROLL_CAPTURED.store(0, Ordering::Relaxed);
@@ -407,11 +519,17 @@ impl State {
                             return Err("应用正在关闭".into());
                         }
                         self.templates = self.hardware.fingerprints(&device.path, &pin)?;
+                        self.fingerprints_loaded = true;
                     }
                     CommandKind::RenameBio => {
-                        let name = new_pin.trim().to_owned();
-                        if name.is_empty() || name.contains('\0') || name.len() > 64 {
-                            return Err("指纹名称不能为空、不能包含空字符，且最多 64 字节".into());
+                        let name = name.trim().to_owned();
+                        if name.is_empty()
+                            || name.contains('\0')
+                            || name.len() > FINGERPRINT_NAME_MAX_BYTES
+                        {
+                            return Err(format!(
+                                "指纹名称不能为空、不能包含空字符，且最多 {FINGERPRINT_NAME_MAX_BYTES} 字节"
+                            ));
                         }
                         if !self.templates.iter().any(|t| t.id == value) {
                             return Err("指纹不存在，请刷新".into());
@@ -460,7 +578,7 @@ static ENROLL_STATE: AtomicU8 = AtomicU8::new(0);
 static ENROLL_CAPTURED: AtomicU8 = AtomicU8::new(0);
 
 // 桥接在后台执行；统一串行化状态与硬件调用，避免扫描、切换和关闭互相打断。
-pub fn dispatch(command: Command) -> Result<Snapshot, String> {
+pub fn dispatch(command: Command) -> Result<Snapshot, CommandError> {
     let shutdown = command.kind == CommandKind::Shutdown;
     if shutdown {
         SHUTTING_DOWN.store(true, Ordering::SeqCst);
@@ -468,12 +586,21 @@ pub fn dispatch(command: Command) -> Result<Snapshot, String> {
     let mut state = STATE
         .get_or_init(|| Mutex::new(State::new()))
         .lock()
-        .map_err(|_| "应用状态异常，请重启".to_owned())?;
+        .map_err(|_| CommandError {
+            cancelled: false,
+            message: "应用状态异常，请重启".to_owned(),
+        })?;
     // 关闭请求可能先于已排队的桥接任务取得锁，禁止后者重新打开硬件。
     if !shutdown && SHUTTING_DOWN.load(Ordering::SeqCst) {
-        return Err("应用正在关闭".to_owned());
+        return Err(CommandError {
+            cancelled: false,
+            message: "应用正在关闭".to_owned(),
+        });
     }
-    state.apply(command)?;
+    state.apply(command).map_err(|message| CommandError {
+        cancelled: message == CANCELLED,
+        message,
+    })?;
     Ok(state.snapshot())
 }
 
@@ -512,6 +639,8 @@ mod tests {
             preferences: Preferences::default(),
             query: String::new(),
             unlocked_pin: None,
+            credentials_loaded: true,
+            fingerprints_loaded: false,
         }
     }
     fn command(kind: CommandKind, value: &str) -> Command {
@@ -522,12 +651,26 @@ mod tests {
             new_pin: String::new(),
             confirm_pin: String::new(),
             confirmed: false,
+            name: String::new(),
         }
     }
     struct SimulatedDevice {
         fail: bool,
+        fingerprint_reads: u32,
     }
     impl Authenticator for SimulatedDevice {
+        fn reusable_pin_token(&self) -> bool {
+            true
+        }
+        fn authenticate(&mut self, _: &str, pin: &str, _: u32) -> Result<(), String> {
+            if self.fail {
+                return Err("模拟 PIN 验证失败".into());
+            }
+            if pin.is_empty() {
+                return Err("模拟缺少 PIN".into());
+            }
+            Ok(())
+        }
         fn discover(&mut self, _: &dyn Fn() -> bool) -> Result<Vec<DeviceSummary>, String> {
             Ok(vec![])
         }
@@ -557,6 +700,7 @@ mod tests {
             Ok(())
         }
         fn fingerprints(&mut self, _: &str, pin: &str) -> Result<Vec<BioTemplateSummary>, String> {
+            self.fingerprint_reads += 1;
             if pin.is_empty() {
                 return Err("模拟缺少 PIN".into());
             }
@@ -608,12 +752,25 @@ mod tests {
             assert!(!inputs.change_pin);
         }
         assert!(!operation_inputs(CommandKind::EnrollBio).requires_confirmation);
+        assert!(operation_inputs(CommandKind::Reset).mutates_device);
+        assert!(!operation_inputs(CommandKind::Scan).mutates_device);
+        assert!(operation_inputs(CommandKind::Scan).touches_hardware);
+        assert!(!operation_inputs(CommandKind::Filter).touches_hardware);
+        assert_eq!(
+            close_timeout_ms(Some(CommandKind::Reset)),
+            DEVICE_TIMEOUT_MS as u32
+        );
+        assert_eq!(close_timeout_ms(Some(CommandKind::Scan)), 3_000);
+        assert_eq!(close_timeout_ms(None), 3_000);
     }
 
     #[test]
     fn entering_fingerprints_uses_current_session_and_skips_unavailable_devices() {
         let mut state = state();
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         state
             .apply(command(CommandKind::EnterFingerprints, ""))
             .unwrap();
@@ -627,6 +784,12 @@ mod tests {
             .apply(command(CommandKind::EnterFingerprints, ""))
             .unwrap();
         assert_eq!(state.templates[0].id, "t1");
+        assert!(state.fingerprints_loaded);
+        state.templates.clear();
+        state
+            .apply(command(CommandKind::EnterFingerprints, ""))
+            .unwrap();
+        assert!(state.templates.is_empty());
         state.disconnect();
         state
             .apply(command(CommandKind::EnterFingerprints, ""))
@@ -638,15 +801,22 @@ mod tests {
     #[test]
     fn selecting_device_verifies_pin_then_switches_active() {
         let mut state = state();
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         let mut request = command(CommandKind::Connect, "two");
         request.pin = "1234".to_owned();
         state.apply(request).unwrap();
         assert_eq!(state.active.as_ref().unwrap().path, "two");
-        assert_eq!(state.snapshot().remaining, 20);
+        assert!(!state.snapshot().credentials_loaded);
         assert!(state.snapshot().credentials.is_empty());
-        assert!(state.templates.is_empty());
         assert!(state.unlocked_pin.is_some());
+        state
+            .apply(command(CommandKind::ListCredentials, ""))
+            .unwrap();
+        assert!(state.snapshot().credentials_loaded);
+        assert_eq!(state.snapshot().remaining, 20);
     }
     #[test]
     fn unlocked_session_reuses_pin_for_fingerprints() {
@@ -655,7 +825,10 @@ mod tests {
         bio.fingerprint = true;
         state.devices[0] = bio.clone();
         state.active = Some(bio);
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
         state.apply(command(CommandKind::ListBio, "")).unwrap();
         assert_eq!(state.templates[0].id, "t1");
@@ -677,14 +850,17 @@ mod tests {
             id: "t1".to_owned(),
             name: "finger".to_owned(),
         }];
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
         let mut request = command(CommandKind::RenameBio, "t1");
-        request.new_pin = " 右手食指 ".to_owned();
+        request.name = " 右手食指 ".to_owned();
         state.apply(request).unwrap();
         assert_eq!(state.templates[0].name, "右手食指");
         let mut empty = command(CommandKind::RenameBio, "t1");
-        empty.new_pin = "   ".to_owned();
+        empty.name = "   ".to_owned();
         assert_eq!(
             state.apply(empty).unwrap_err(),
             "指纹名称不能为空、不能包含空字符，且最多 64 字节"
@@ -697,7 +873,10 @@ mod tests {
         bio.fingerprint = true;
         state.devices[0] = bio.clone();
         state.active = Some(bio);
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
         state.apply(command(CommandKind::EnrollBio, "")).unwrap();
         assert_eq!(enroll_captured(), 3);
@@ -706,7 +885,10 @@ mod tests {
     #[test]
     fn rejected_device_commands_preserve_inventory_and_binding() {
         let mut state = state();
-        state.hardware = Box::new(SimulatedDevice { fail: true });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: true,
+            fingerprint_reads: 0,
+        });
         for (kind, value) in [
             (CommandKind::Connect, "two"),
             (CommandKind::DeleteCredential, "01"),
@@ -724,7 +906,10 @@ mod tests {
     #[test]
     fn successful_removal_updates_counts_and_rescan_releases_missing_device() {
         let mut state = state();
-        state.hardware = Box::new(SimulatedDevice { fail: false });
+        state.hardware = Box::new(SimulatedDevice {
+            fail: false,
+            fingerprint_reads: 0,
+        });
         state.unlocked_pin = Some(zeroize::Zeroizing::new("1234".to_owned()));
         let mut request = command(CommandKind::DeleteCredential, "01");
         request.confirmed = true;

@@ -13,6 +13,7 @@ import 'pages/devices_page.dart';
 import 'pages/credentials_page.dart';
 import 'pages/fingerprints_page.dart';
 import 'pages/settings_page.dart';
+import 'ui/callbacks.dart';
 import 'ui/color_presets.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/closing_dialog.dart';
@@ -30,20 +31,9 @@ class KeeperApp extends StatefulWidget {
 }
 
 class _KeeperAppState extends State<KeeperApp> with WindowListener {
-  /// 关闭时等待后端的上限：写入设备的操作不能随手打断，读取类超时就先退出。
-  static const _readCloseTimeout = Duration(seconds: 3);
-  static const _writeCloseTimeout = Duration(seconds: 15);
-
   /// 秒关时不显示提示，避免弹窗闪一下。
   static const _closingHintDelay = Duration(milliseconds: 250);
-  static const _writeKinds = {
-    backend.CommandKind.changePin,
-    backend.CommandKind.reset,
-    backend.CommandKind.deleteCredential,
-    backend.CommandKind.deleteBio,
-    backend.CommandKind.renameBio,
-    backend.CommandKind.enrollBio,
-  };
+  static const _searchDelay = Duration(milliseconds: 200);
 
   backend.Snapshot? _state;
   int _pending = 0;
@@ -65,6 +55,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
   bool _settingsOpen = false;
   final _settingsKey = GlobalKey<SettingsPageState>();
   final _search = TextEditingController();
+  Timer? _searchDebounce;
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
   /// 跟随系统时为 null，交给 MaterialApp 按系统语言解析。
@@ -146,17 +137,24 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     String pin = '',
     String newPin = '',
     String confirmPin = '',
+    String name = '',
     bool confirmed = false,
     bool enqueue = false,
   }) async {
-    if ((_busy && !enqueue) || _closing) {
+    final protocol = backend.operationInputs(kind: kind);
+    if ((protocol.touchesHardware && _busy && !enqueue) || _closing) {
       throw StateError(_l10n.waitForCurrentOperation);
     }
-    setState(() {
-      _pending++;
-      _busyKind = kind;
-      _error = null;
-    });
+    final track = protocol.touchesHardware;
+    if (track) {
+      setState(() {
+        _pending++;
+        _busyKind = kind;
+        _error = null;
+      });
+    } else if (mounted) {
+      setState(() => _error = null);
+    }
     try {
       final request = _queue.then(
         (_) => backend.dispatch(
@@ -167,14 +165,20 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
             newPin: newPin,
             confirmPin: confirmPin,
             confirmed: confirmed,
+            name: name,
           ),
         ),
       );
       _queue = request.then<void>((_) {}, onError: (Object _, StackTrace _) {});
       final state = await request;
       if (mounted) setState(() => _state = state);
+      if (kind == backend.CommandKind.connect &&
+          state.canManageCredentials &&
+          !state.credentialsLoaded) {
+        unawaited(_act(backend.CommandKind.listCredentials, enqueue: true));
+      }
     } finally {
-      if (mounted) {
+      if (track && mounted) {
         setState(() {
           _pending--;
           if (_pending == 0) _busyKind = null;
@@ -187,13 +191,32 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     backend.CommandKind kind, {
     String value = '',
     String newPin = '',
+    String name = '',
     bool enqueue = false,
   }) async {
     try {
-      await _dispatch(kind, value: value, newPin: newPin, enqueue: enqueue);
+      await _dispatch(
+        kind,
+        value: value,
+        newPin: newPin,
+        name: name,
+        enqueue: enqueue,
+      );
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = backendMessage(error));
     }
+  }
+
+  void _searchCredentials(String query, {bool immediate = false}) {
+    if (_closing) return;
+    _searchDebounce?.cancel();
+    if (immediate) {
+      _act(backend.CommandKind.filter, value: query);
+      return;
+    }
+    _searchDebounce = Timer(_searchDelay, () {
+      _act(backend.CommandKind.filter, value: query);
+    });
   }
 
   @override
@@ -218,11 +241,10 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
               newPin: '',
               confirmPin: '',
               confirmed: false,
+              name: '',
             ),
           )
-          .timeout(
-            _writeKinds.contains(kind) ? _writeCloseTimeout : _readCloseTimeout,
-          );
+          .timeout(Duration(milliseconds: backend.closeTimeoutMs(kind: kind)));
     } on TimeoutException {
       // 设备无响应时也要退出：写操作多等一会儿，读取类超时就直接关，
       // 设备句柄由进程退出时回收。
@@ -231,7 +253,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
         setState(() {
           _closing = false;
           _closingOperation = null;
-          _error = error.toString();
+          _error = backendMessage(error);
         });
       }
       return;
@@ -245,6 +267,7 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
       subscription.cancel();
     }
     _closingHint?.cancel();
+    _searchDebounce?.cancel();
     if (widget.desktop) windowManager.removeListener(this);
     _search.dispose();
     super.dispose();
@@ -298,7 +321,8 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
     if (!widget.desktop && index == 0 && !_busy && !_closing) {
       _act(backend.CommandKind.scan);
     }
-    if (index == 2) {
+    // 指纹还没读过时排队；初始化尚未返回也算没读过。后端会跳过不支持或已加载的钥匙。
+    if (index == 2 && _state?.fingerprintsLoaded != true) {
       _act(backend.CommandKind.enterFingerprints, enqueue: true);
     }
   }
@@ -337,6 +361,9 @@ class _KeeperAppState extends State<KeeperApp> with WindowListener {
           onAction: _act,
           onPrompt: _prompt,
           searchController: _search,
+          onSearchChanged: _searchCredentials,
+          onSearchSubmitted: (query) =>
+              _searchCredentials(query, immediate: true),
         ),
         2 => FingerprintsPage(
           snapshot: _state,

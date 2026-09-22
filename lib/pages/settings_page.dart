@@ -220,6 +220,14 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  String _localeLabel(AppLocalizations l10n, String code) => switch (code) {
+    systemLocalePreference => l10n.languageSystem,
+    'zh-CN' => l10n.languageZh,
+    'zh-TW' => l10n.languageZhTw,
+    'en-US' => l10n.languageEn,
+    _ => code,
+  };
+
   Widget _languageSection(BuildContext context, AppLocalizations l10n) {
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -228,13 +236,11 @@ class SettingsPageState extends State<SettingsPage> {
           initialValue: widget.snapshot?.preferences.locale ?? 'zh-CN',
           decoration: InputDecoration(labelText: l10n.language),
           items: [
-            DropdownMenuItem(
-              value: systemLocalePreference,
-              child: Text(l10n.languageSystem),
-            ),
-            DropdownMenuItem(value: 'zh-CN', child: Text(l10n.languageZh)),
-            DropdownMenuItem(value: 'zh-TW', child: Text(l10n.languageZhTw)),
-            DropdownMenuItem(value: 'en-US', child: Text(l10n.languageEn)),
+            for (final code in backend.supportedLocales())
+              DropdownMenuItem(
+                value: code,
+                child: Text(_localeLabel(l10n, code)),
+              ),
           ],
           onChanged: widget.busy || widget.closing
               ? null

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/locale_preference.dart';
+import '../ui/callbacks.dart';
 
 class OperationDialog extends StatefulWidget {
   const OperationDialog({
@@ -51,7 +52,7 @@ class _OperationDialogState extends State<OperationDialog> {
       _clearInputs();
       setState(() {
         _pending = false;
-        _error = failure.toString();
+        _error = backendMessage(failure);
       });
     }
   }

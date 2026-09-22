@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 // 缩短设备端采样等待，保留传输超时供设备正常返回响应。
 pub(super) const CAPTURE_WAIT_MS: u32 = 1_000;
+pub(crate) const CANCELLED: &str = "指纹录入已取消";
 
 pub(super) fn sample_result(
     status: u8,
@@ -21,7 +22,7 @@ pub(super) fn sample_result(
 
 pub(super) fn check_cancelled(cancelled: &dyn Fn() -> bool) -> Result<(), String> {
     if cancelled() {
-        Err("指纹录入已取消".into())
+        Err(CANCELLED.into())
     } else {
         Ok(())
     }
@@ -60,7 +61,7 @@ pub(super) fn finish(
     if let Err(error) = result {
         // 在采样调用返回后由同一线程取消，避免并发使用设备句柄。
         return match cancel() {
-            Ok(()) if cancelled() => Err("指纹录入已取消".into()),
+            Ok(()) if cancelled() => Err(CANCELLED.into()),
             Ok(()) => Err(error),
             Err(cleanup) => Err(format!(
                 "{error}；取消录入失败：{cleanup}，请重新插拔认证器"

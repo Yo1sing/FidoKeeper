@@ -8,12 +8,27 @@ import 'models.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `active`, `apply`, `disconnect`, `new`, `scan`, `session_pin`, `snapshot`
+// These functions are ignored because they are not marked as `pub`: `active`, `apply`, `cancel_requested`, `disconnect`, `new`, `scan`, `session_pin`, `snapshot`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `State`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
 
 OperationInputs operationInputs({required CommandKind kind}) =>
     RustLib.instance.api.crateApiKeeperOperationInputs(kind: kind);
+
+/// 写操作等待当前这次设备调用结束；读取类超时后可以先退出，句柄随进程回收。
+int closeTimeoutMs({CommandKind? kind}) =>
+    RustLib.instance.api.crateApiKeeperCloseTimeoutMs(kind: kind);
+
+List<String> colorSeeds() => RustLib.instance.api.crateApiKeeperColorSeeds();
+
+String defaultColorSeed() =>
+    RustLib.instance.api.crateApiKeeperDefaultColorSeed();
+
+List<String> supportedLocales() =>
+    RustLib.instance.api.crateApiKeeperSupportedLocales();
+
+int fingerprintNameMaxBytes() =>
+    RustLib.instance.api.crateApiKeeperFingerprintNameMaxBytes();
 
 int enrollCaptured() => RustLib.instance.api.crateApiKeeperEnrollCaptured();
 
@@ -31,6 +46,9 @@ class Command {
   final String confirmPin;
   final bool confirmed;
 
+  /// 指纹新名称。和 PIN 分开，避免调用方把名称写进 PIN 字段。
+  final String name;
+
   const Command({
     required this.kind,
     required this.value,
@@ -38,6 +56,7 @@ class Command {
     required this.newPin,
     required this.confirmPin,
     required this.confirmed,
+    required this.name,
   });
 
   @override
@@ -47,7 +66,8 @@ class Command {
       pin.hashCode ^
       newPin.hashCode ^
       confirmPin.hashCode ^
-      confirmed.hashCode;
+      confirmed.hashCode ^
+      name.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -59,7 +79,26 @@ class Command {
           pin == other.pin &&
           newPin == other.newPin &&
           confirmPin == other.confirmPin &&
-          confirmed == other.confirmed;
+          confirmed == other.confirmed &&
+          name == other.name;
+}
+
+class CommandError implements FrbException {
+  final bool cancelled;
+  final String message;
+
+  const CommandError({required this.cancelled, required this.message});
+
+  @override
+  int get hashCode => cancelled.hashCode ^ message.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CommandError &&
+          runtimeType == other.runtimeType &&
+          cancelled == other.cancelled &&
+          message == other.message;
 }
 
 enum CommandKind {
@@ -92,15 +131,27 @@ class OperationInputs {
   final bool changePin;
   final bool requiresConfirmation;
 
+  /// 会打开设备。界面用它占用忙碌状态；筛选和偏好设置不占。
+  final bool touchesHardware;
+
+  /// 会改设备内容。关闭时要等满一次设备 I/O，避免写到一半进程退出。
+  final bool mutatesDevice;
+
   const OperationInputs({
     required this.askPin,
     required this.changePin,
     required this.requiresConfirmation,
+    required this.touchesHardware,
+    required this.mutatesDevice,
   });
 
   @override
   int get hashCode =>
-      askPin.hashCode ^ changePin.hashCode ^ requiresConfirmation.hashCode;
+      askPin.hashCode ^
+      changePin.hashCode ^
+      requiresConfirmation.hashCode ^
+      touchesHardware.hashCode ^
+      mutatesDevice.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -109,7 +160,9 @@ class OperationInputs {
           runtimeType == other.runtimeType &&
           askPin == other.askPin &&
           changePin == other.changePin &&
-          requiresConfirmation == other.requiresConfirmation;
+          requiresConfirmation == other.requiresConfirmation &&
+          touchesHardware == other.touchesHardware &&
+          mutatesDevice == other.mutatesDevice;
 }
 
 class Snapshot {
@@ -123,6 +176,8 @@ class Snapshot {
   final List<BioTemplateSummary> templates;
   final Preferences preferences;
   final String query;
+  final bool credentialsLoaded;
+  final bool fingerprintsLoaded;
 
   const Snapshot({
     required this.canManageCredentials,
@@ -135,6 +190,8 @@ class Snapshot {
     required this.templates,
     required this.preferences,
     required this.query,
+    required this.credentialsLoaded,
+    required this.fingerprintsLoaded,
   });
 
   @override
@@ -148,7 +205,9 @@ class Snapshot {
       remaining.hashCode ^
       templates.hashCode ^
       preferences.hashCode ^
-      query.hashCode;
+      query.hashCode ^
+      credentialsLoaded.hashCode ^
+      fingerprintsLoaded.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -164,5 +223,7 @@ class Snapshot {
           remaining == other.remaining &&
           templates == other.templates &&
           preferences == other.preferences &&
-          query == other.query;
+          query == other.query &&
+          credentialsLoaded == other.credentialsLoaded &&
+          fingerprintsLoaded == other.fingerprintsLoaded;
 }

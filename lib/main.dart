@@ -39,6 +39,7 @@ Future<Preferences?> _loadPreferences() async {
         newPin: '',
         confirmPin: '',
         confirmed: false,
+        name: '',
       ),
     );
     return snapshot.preferences;
